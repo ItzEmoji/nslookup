@@ -15,17 +15,17 @@ export const html = `
 <style>
 /* === DESIGN TOKENS === */
 :root {
-  --bg: #0a0a0a;
-  --bg-rgb: 10, 10, 10;
-  --surface: #111111;
-  --surface-hover: #1a1a1a;
-  --border: #222222;
-  --text: #ffffff;
-  --text-secondary: #aaaaaa;
-  --text-muted: #888888;
-  --accent: #333333;
-  --link: #3b82f6;
-  --link-hover: #60a5fa;
+  --bg: #131314;
+  --bg-rgb: 19, 19, 20;
+  --surface: #1E1F22;
+  --surface-hover: #2E2F33;
+  --border: #44474E;
+  --text: #E3E2E6;
+  --text-secondary: #C4C6D0;
+  --text-muted: #8E9099;
+  --accent: #004A77;
+  --link: #A8C7FA;
+  --link-hover: #D3E3FD;
   --error-bg: #4a1c1c;
   --error-border: #6a2c2c;
   --success: #22c55e;
@@ -88,7 +88,7 @@ h1 {
 
 .search {
   width: 100%; padding: 22px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 20px;
+  border: 1px solid var(--border); border-radius: 28px;
   color: var(--text); font-size: 20px; outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -100,7 +100,7 @@ h1 {
 .autocomplete-dropdown {
   position: absolute; top: 100%; left: 0; right: 0;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; margin-top: 8px; z-index: 50;
+  border-radius: 24px; margin-top: 8px; z-index: 50;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   display: none; overflow: hidden; text-align: left;
 }
@@ -131,7 +131,7 @@ h1 {
   justify-content: center; flex-wrap: wrap;
 }
 .quick-action {
-  padding: 8px 16px; border-radius: 12px;
+  padding: 8px 16px; border-radius: 16px;
   background: var(--surface); border: 1px solid var(--border);
   color: var(--text-muted); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.2s ease; font-family: inherit;
@@ -162,7 +162,7 @@ h1 {
 /* === BUTTONS === */
 button:not(.icon-btn):not(.scroll-top):not(.quick-action):not(.copy-btn):not(.record-pill) {
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 14px; padding: 12px 20px; font-size: 15px; font-weight: 500;
+  border-radius: 999px; padding: 12px 20px; font-size: 15px; font-weight: 500;
   cursor: pointer; transition: all 0.2s ease; font-family: inherit;
 }
 button:not(.icon-btn):not(.scroll-top):not(.quick-action):not(.copy-btn):not(.record-pill):hover {
@@ -171,7 +171,7 @@ button:not(.icon-btn):not(.scroll-top):not(.quick-action):not(.copy-btn):not(.re
 button:not(.icon-btn):not(.scroll-top):not(.quick-action):not(.copy-btn):not(.record-pill):active { transform: translateY(1px); }
 button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
-.btn-sm { padding: 8px 14px !important; font-size: 13px !important; border-radius: 10px !important; }
+.btn-sm { padding: 8px 14px !important; font-size: 13px !important; border-radius: 999px !important; }
 .btn-ghost { background: transparent !important; border-color: transparent !important; }
 .btn-ghost:hover { background: var(--surface) !important; border-color: var(--border) !important; }
 .btn-danger { background: var(--error-bg) !important; border-color: var(--error-border) !important; color: #ffb4b4 !important; }
@@ -256,6 +256,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
   animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 .record-pill {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
   padding: 5px 12px; border-radius: 999px;
   font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
   font-family: var(--font-mono); cursor: pointer;
@@ -268,7 +269,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 
 /* === CARD === */
 .card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
   padding: 24px; margin-top: 24px; opacity: 0;
   animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   box-shadow: 0 4px 24px rgba(0,0,0,0.05);
@@ -283,7 +284,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
   display: flex; align-items: center; gap: 10px; margin-top: 0;
 }
 .type-badge {
-  padding: 4px 10px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  padding: 4px 10px; border-radius: 12px;
   background: var(--bg); border: 1px solid var(--border);
   font-size: 12px; font-weight: 700; font-family: var(--font-mono);
   letter-spacing: 0.5px; color: var(--link);
@@ -292,7 +294,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 /* === CONSENSUS === */
 .consensus {
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px; margin-bottom: 12px;
+  border-radius: 24px; padding: 16px; margin-bottom: 12px;
 }
 .consensus-value {
   font-size: 17px; font-weight: 700; font-family: var(--font-mono);
@@ -305,14 +307,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 
 /* === COPY BUTTON === */
 .copy-btn {
-  padding: 4px 10px; border-radius: 8px;
-  background: transparent; border: 1px solid var(--border);
-  color: var(--text-muted); font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s ease; font-family: inherit;
-  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  padding: 6px 16px; border-radius: 999px;
+  background: var(--surface-hover); border: none;
+  color: var(--text); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
-.copy-btn:hover { background: var(--surface-hover); color: var(--text-secondary); border-color: var(--accent); }
-.copy-btn.copied { background: rgba(var(--success-rgb), 0.1); color: var(--success); border-color: rgba(var(--success-rgb), 0.3); }
+.copy-btn:hover { background: var(--border); transform: scale(1.02); }
+.copy-btn.copied { background: rgba(var(--success-rgb), 0.15); color: var(--success); transform: scale(1); }
 
 /* === TIMING CHART === */
 .timing-chart { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin: 16px 0 8px; padding: 12px 0; }
@@ -329,7 +331,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important;
 
 /* === RESOLVER DETAILS === */
 .resolver-result {
-  padding: 14px 16px; border-radius: 14px;
+  padding: 14px 16px; border-radius: 24px;
   background: var(--bg); border: 1px solid var(--border);
   margin-bottom: 8px; transition: border-color 0.15s ease;
 }
@@ -367,7 +369,7 @@ pre {
   gap: 12px; margin-top: 16px;
 }
 .security-item {
-  padding: 16px; border-radius: 14px;
+  padding: 16px; border-radius: 24px;
   background: var(--bg); border: 1px solid var(--border);
 }
 .security-item .label {
@@ -431,7 +433,7 @@ pre {
 }
 .modal-overlay.hidden { display: none; }
 .modal {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 32px;
   padding: 30px; width: 90%; max-width: 600px; position: relative;
   max-height: 85vh; overflow-y: auto; overflow-x: hidden;
   box-shadow: 0 25px 50px rgba(0,0,0,0.5); overscroll-behavior: contain;
@@ -484,9 +486,9 @@ pre {
 
 .setting-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 16px; margin-bottom: 8px;
+  padding: 16px 24px; margin-bottom: 8px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 14px; transition: border-color 0.2s ease;
+  border-radius: 24px; transition: border-color 0.2s ease;
 }
 .setting-row:hover { border-color: var(--accent); }
 .setting-label strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
@@ -509,8 +511,9 @@ pre {
 
 /* === SELECTABLE TAG === */
 .selectable-tag {
-  display: inline-block; padding: 8px 16px;
-  border-radius: 12px; cursor: pointer; transition: all 0.2s ease;
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  padding: 8px 16px;
+  border-radius: 16px; cursor: pointer; transition: all 0.2s ease;
   font-weight: 500; font-size: 14px; user-select: none;
   border: 1px solid var(--error);
   background: rgba(var(--error-rgb), 0.05);
@@ -527,8 +530,8 @@ pre {
 /* === RESOLVER CARD === */
 .selectable-row {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 10px; padding: 14px 16px;
-  border-radius: 14px; transition: all 0.2s ease;
+  margin-bottom: 10px; padding: 16px 24px;
+  border-radius: 24px; transition: all 0.2s ease;
   cursor: pointer; user-select: none;
   border: 1px solid var(--error);
   background: rgba(var(--error-rgb), 0.05);
@@ -544,7 +547,7 @@ pre {
 
 /* === SETTINGS INPUTS === */
 .settings-input, select {
-  width: 100%; padding: 12px 16px; border-radius: 14px;
+  width: 100%; padding: 16px 24px; border-radius: 24px;
   background: var(--bg); border: 1px solid var(--border);
   color: var(--text); font-size: 14px; font-family: inherit;
   outline: none; transition: border-color 0.2s ease; cursor: text;
@@ -669,7 +672,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
 
       <select id="themeSelect" onchange="changeTheme()" style="margin-bottom: 8px;">
         <option value="custom">Custom Theme</option>
-        <option value="default">Vanilla Dark</option>
+        <option value="default">Material You Dark</option>
+        <option value="materialYouLight">Material You Light</option>
         <option value="catppuccin">Catppuccin Mocha</option>
         <option value="nord">Nord</option>
         <option value="tokyo">Tokyo Night</option>
@@ -750,32 +754,66 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
         <input type="text" class="settings-input" id="newResUrl" placeholder="https://...">
         <button onclick="addResolver()">Save</button>
       </div>
-      </div>
     </div>
 
     <!-- HELP & DOCS -->
     <div class="settings-section">
       <div class="settings-section-title">Documentation & Help</div>
-      <div class="data-buttons">
-        <button onclick="window.location.href='/api-docs'">API Documentation</button>
-        <button onclick="document.getElementById('helpModal').classList.remove('hidden')">Keybindings</button>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>API Documentation</strong>
+          <span>View developer endpoints</span>
+        </div>
+        <button onclick="window.location.href='/api-docs'">View</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Keybindings</strong>
+          <span>Keyboard shortcuts and hotkeys</span>
+        </div>
+        <button onclick="document.getElementById('helpModal').classList.remove('hidden')">View</button>
       </div>
     </div>
 
     <!-- DATA MANAGEMENT -->
     <div class="settings-section">
       <div class="settings-section-title">Settings Management</div>
-      <div class="data-buttons">
-        <button onclick="exportSettings()">Export Settings</button>
-        <button onclick="document.getElementById('importFile').click()">Import Settings</button>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Export Settings</strong>
+          <span>Save your configuration</span>
+        </div>
+        <button onclick="exportSettings()">Export</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Import Settings</strong>
+          <span>Load a configuration</span>
+        </div>
+        <button onclick="document.getElementById('importFile').click()">Import</button>
         <input type="file" id="importFile" class="hidden" accept=".json" onchange="importSettings(event)">
       </div>
     </div>
-    <div class="settings-section" style="border-bottom:none; border-top: 1px solid rgba(255, 97, 136, 0.2); background: rgba(255, 97, 136, 0.05); margin: 0 -20px -20px -20px; padding: 20px;">
-      <div class="settings-section-title" style="color: #ff6188; display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> DANGER ZONE</div>
-      <div class="data-buttons" style="justify-content: flex-start; gap: 12px;">
-        <button class="btn-danger" onclick="clearHistory()">Clear History</button>
-        <button class="btn-danger" onclick="resetSettings()">Factory Reset</button>
+    
+    <!-- DANGER ZONE -->
+    <div class="settings-section" style="border-bottom:none; border-top: 1px solid rgba(255, 97, 136, 0.2); background: rgba(255, 97, 136, 0.05); margin: 0 -28px -40px -28px; padding: 24px 28px;">
+      <div class="settings-section-title" style="color: #ff6188; display:flex; align-items:center; gap:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 
+        DANGER ZONE
+      </div>
+      <div class="setting-row" style="border-color: rgba(255, 97, 136, 0.3);">
+        <div class="setting-label">
+          <strong style="color: #ffb4b4;">Clear History</strong>
+          <span>Delete all recent lookups</span>
+        </div>
+        <button class="btn-danger" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="setting-row" style="border-color: rgba(255, 97, 136, 0.3);">
+        <div class="setting-label">
+          <strong style="color: #ffb4b4;">Factory Reset</strong>
+          <span>Reset all settings to default</span>
+        </div>
+        <button class="btn-danger" onclick="resetSettings()">Reset</button>
       </div>
     </div>
   </div>
@@ -854,7 +892,7 @@ let leafletMap = null;
 let queryHistory = JSON.parse(localStorage.getItem('lookup_history') || '[]');
 
 const themes = {
-  default: { bg:'#0a0a0a', surface:'#111111', surfaceHover:'#1a1a1a', border:'#222222', text:'#ffffff', textMuted:'#888888', accent:'#333333', link:'#3b82f6', linkHover:'#60a5fa', errorBg:'#4a1c1c', errorBorder:'#6a2c2c', success:'#22c55e', error:'#ef4444' },
+  default: { bg:'#131314', surface:'#1E1F22', surfaceHover:'#2E2F33', border:'#44474E', text:'#E3E2E6', textMuted:'#8E9099', accent:'#004A77', link:'#A8C7FA', linkHover:'#D3E3FD', errorBg:'#8C1D18', errorBorder:'#F2B8B5', success:'#6DD58C', error:'#F2B8B5' }, materialYouLight: { bg:'#FDFBFF', surface:'#F0F0F4', surfaceHover:'#E2E2E9', border:'#C4C6D0', text:'#1A1B1F', textMuted:'#44474E', accent:'#A8C7FA', link:'#005B8F', linkHover:'#004A77', errorBg:'#F9DEDC', errorBorder:'#F2B8B5', success:'#006D3A', error:'#B3261E' },
   catppuccin: { bg:'#1e1e2e', surface:'#181825', surfaceHover:'#313244', border:'#45475a', text:'#cdd6f4', textMuted:'#a6adc8', accent:'#cba6f7', link:'#89b4fa', linkHover:'#b4befe', errorBg:'#592030', errorBorder:'#8a2b45', success:'#a6e3a1', error:'#f38ba8' },
   nord: { bg:'#2e3440', surface:'#3b4252', surfaceHover:'#434c5e', border:'#4c566a', text:'#eceff4', textMuted:'#d8dee9', accent:'#88c0d0', link:'#81a1c1', linkHover:'#88c0d0', errorBg:'#bf616a33', errorBorder:'#bf616a', success:'#a3be8c', error:'#bf616a' },
   tokyo: { bg:'#1a1b26', surface:'#24283b', surfaceHover:'#292e42', border:'#414868', text:'#c0caf5', textMuted:'#a9b1d6', accent:'#7aa2f7', link:'#7dcfff', linkHover:'#b4f9f8', errorBg:'#db4b4b33', errorBorder:'#db4b4b', success:'#9ece6a', error:'#f7768e' },
