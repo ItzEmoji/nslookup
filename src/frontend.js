@@ -868,8 +868,7 @@ const defaultSettings = {
   customFont: '',
   resolvers: {
     Cloudflare: { url:'https://cloudflare-dns.com/dns-query', active:true },
-    Google: { url:'https://dns.google/resolve', active:true },
-    AdGuard: { url:'https://dns.adguard-dns.com/resolve', active:true }
+    Google: { url:'https://dns.google/resolve', active:true }
   },
   features: { animations:true, enableWhois:false, enableSecurity:true },
   advanced: { rdapServer:'https://rdap.org/domain/', timeout:5000 },

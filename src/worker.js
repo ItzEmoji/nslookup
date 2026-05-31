@@ -58,6 +58,59 @@ function expandIPv6ToArpaServer(ip) {
   return nibbles + ".ip6.arpa";
 }
 
+async function checkAbuse(targetDomain, isIPv4, isIPv6, customResolverUrl) {
+  let queryName = "";
+  if (isIPv4) {
+    queryName = targetDomain.split('.').reverse().join('.') + ".zen.spamhaus.org";
+  } else if (isIPv6) {
+    let arpa = expandIPv6ToArpaServer(targetDomain);
+    queryName = arpa.replace(".ip6.arpa", ".zen.spamhaus.org");
+  } else {
+    queryName = targetDomain + ".dbl.spamhaus.org";
+  }
+  
+  // Default to Cloudflare DoH for abuse check, or use the first custom resolver if provided
+  const resolverUrl = customResolverUrl || "https://cloudflare-dns.com/dns-query";
+  
+  try {
+    const response = await fetch(`${resolverUrl}?name=${queryName}&type=A`, { headers: { accept: "application/dns-json" } });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.Answer && data.Answer.length > 0) {
+        const ip = data.Answer[0].data;
+        // 127.255.255.254 means query blocked due to rate limit, ignore it.
+        if (ip.startsWith("127.") && ip !== "127.255.255.254") {
+          return true; // Blacklisted
+        }
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+function checkPropagation(finalResults, lookupTypes) {
+  for (const type of lookupTypes) {
+    const result = finalResults[type];
+    if (!result) continue;
+    
+    const resolversKeys = Object.keys(result.resolvers);
+    if (resolversKeys.length < 2) continue;
+    
+    const sets = resolversKeys.map(rKey => {
+      const answers = result.resolvers[rKey] || [];
+      return answers.map(a => a.data).sort().join('|');
+    });
+    
+    const firstSet = sets[0];
+    for (let i = 1; i < sets.length; i++) {
+      if (sets[i] !== firstSet) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -67,8 +120,7 @@ export default {
 
     let apiResolvers = {
       Cloudflare: "https://cloudflare-dns.com/dns-query",
-      Google: "https://dns.google/resolve",
-      AdGuard: "https://dns.adguard-dns.com/resolve"
+      Google: "https://dns.google/resolve"
     };
 
     const customResolvers = url.searchParams.get("resolvers") || url.searchParams.get("resolver");
@@ -85,7 +137,7 @@ export default {
     }
 
     if (!wantsAPI && url.pathname !== '/help' && url.pathname !== '/api-docs') {
-      const isFrontendRoute = url.pathname === '/' || /^\/(ip|ipv4|ipv6|whois)(\/.*)?$/.test(url.pathname);
+      const isFrontendRoute = url.pathname === '/' || /^\/(ip|ipv4|ipv6|whois|abuse|propagated)(\/.*)?$/.test(url.pathname);
       if (!isFrontendRoute) {
         let targetDomain = url.pathname.substring(1).toLowerCase();
         return Response.redirect(`${url.origin}/?domain=${targetDomain}`, 301);
@@ -250,6 +302,76 @@ Returns the IP address you are calling from.
       return new Response(JSON.stringify(data, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
     }
 
+    if (url.pathname === '/abuse' || url.pathname.startsWith('/abuse/')) {
+      let d = url.pathname.replace(/^\/abuse\/?/, '').toLowerCase();
+      if (!d) d = url.searchParams.get("domain")?.toLowerCase();
+      if (!d) {
+        return new Response("Usage: curl https://lookup.itzemoji.com/abuse/<DOMAIN>\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+      }
+      const ipv4RegexLocal = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
+      const isIPv6Local = d.includes(':') && /^[0-9a-fA-F:]+$/.test(d);
+      
+      const customParam = url.searchParams.get("resolver");
+      const firstResolverUrl = customParam || Object.values(apiResolvers)[0];
+      const isAbuse = await checkAbuse(d, ipv4RegexLocal.test(d), isIPv6Local, firstResolverUrl);
+      
+      return new Response(JSON.stringify(isAbuse) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+    }
+
+    if (url.pathname === '/proxy-dns') {
+      const targetUrl = url.searchParams.get("url");
+      const name = url.searchParams.get("name");
+      const type = url.searchParams.get("type");
+      if (!targetUrl || !name || !type) return new Response("Missing params", { status: 400, headers: { "Access-Control-Allow-Origin": "*" } });
+      
+      try {
+        const res = await fetch(`${targetUrl}?name=${name}&type=${type}`, { headers: { accept: "application/dns-json" }});
+        const data = await res.text();
+        return new Response(data, { 
+          status: res.status, 
+          headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" } 
+        });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Access-Control-Allow-Origin": "*" }});
+      }
+    }
+
+    if (url.pathname === '/propagated' || url.pathname.startsWith('/propagated/')) {
+      let d = url.pathname.replace(/^\/propagated\/?/, '').toLowerCase();
+      if (!d) d = url.searchParams.get("domain")?.toLowerCase();
+      if (!d) {
+        return new Response("Usage: curl https://lookup.itzemoji.com/propagated/<DOMAIN>\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+      }
+      
+      const ipv4RegexLocal = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
+      const isIPv6Local = d.includes(':') && /^[0-9a-fA-F:]+$/.test(d);
+      
+      let checkTypes = ["A", "AAAA", "MX", "TXT", "NS"];
+      let queryName = d;
+      if (ipv4RegexLocal.test(d)) {
+         queryName = d.split('.').reverse().join('.') + '.in-addr.arpa'; checkTypes = ["PTR"];
+      } else if (isIPv6Local) {
+         queryName = expandIPv6ToArpaServer(d); checkTypes = ["PTR"];
+      }
+
+      const pPromises = [];
+      for (const type of checkTypes) {
+        for (const [name, resolverUrl] of Object.entries(apiResolvers)) {
+          pPromises.push(queryDNSServer(queryName, type, name, resolverUrl).then(result => ({ type, result })));
+        }
+      }
+      const pResults = await Promise.all(pPromises);
+      const pFinal = {};
+      for (const item of pResults) {
+        if (!pFinal[item.type]) pFinal[item.type] = { resolvers: {} };
+        pFinal[item.type].resolvers[item.result.resolver] = item.result.answers;
+      }
+      
+      const isPropagated = checkPropagation(pFinal, checkTypes);
+      return new Response(JSON.stringify(isPropagated) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+    }
+
+
     let targetDomain = url.pathname.substring(1).toLowerCase();
     if (!targetDomain) targetDomain = url.searchParams.get("domain")?.toLowerCase();
 
@@ -376,7 +498,13 @@ Returns the IP address you are calling from.
       .catch(err => ({ error: err.message, _latency: Date.now() - start }));
     }
 
-    const [allResults, whoisData] = await Promise.all([Promise.all(fetchPromises), whoisPromise]);
+    const customParam = url.searchParams.get("resolver");
+    const firstResolverUrl = customParam || Object.values(apiResolvers)[0];
+    const [allResults, whoisData, isAbused] = await Promise.all([
+      Promise.all(fetchPromises), 
+      whoisPromise,
+      checkAbuse(targetDomain, ipv4Regex.test(targetDomain), isIPv6, firstResolverUrl)
+    ]);
 
     const finalResults = {};
     for (const item of allResults) {
@@ -392,6 +520,8 @@ Returns the IP address you are calling from.
       }
     }
 
-    return new Response(JSON.stringify({ target: targetDomain, isReverseSearch: isReverse, records_queried: lookupTypes, dns: finalResults, whois: whoisData }, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+    const isPropagated = checkPropagation(finalResults, lookupTypes);
+
+    return new Response(JSON.stringify({ target: targetDomain, isReverseSearch: isReverse, records_queried: lookupTypes, propagated: isPropagated, abuse: isAbused, dns: finalResults, whois: whoisData }, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
   }
 };
