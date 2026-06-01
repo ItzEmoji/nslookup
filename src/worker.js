@@ -152,7 +152,7 @@ export default {
     }
 
     if (!wantsAPI && url.pathname !== '/help' && url.pathname !== '/api-docs') {
-      const isFrontendRoute = url.pathname === '/' || /^\/(ip|ipv4|ipv6|whois|abuse|propagated)(\/.*)?$/.test(url.pathname);
+      const isFrontendRoute = url.pathname === '/' || /^\/(ip|ipv4|ipv6|whois|abuse|propagated|ssl|security)(\/.*)?$/.test(url.pathname);
       if (!isFrontendRoute) {
         let targetDomain = url.pathname.substring(1).toLowerCase();
         return Response.redirect(`${url.origin}/?domain=${targetDomain}`, 301);
@@ -184,6 +184,7 @@ ENDPOINTS
     /whois/<domain>         Returns pure JSON RDAP/WHOIS data.
     /ssl/<domain>           Returns certificate history from CertSpotter.
     /security/<domain>      Returns security analysis (SPF, DMARC, CAA).
+    /history/<domain>       Returns historical DNS A records (Requires ?apikey=).
 
 SETTINGS & FEATURES
     - Privacy: No tracking, no logs.
@@ -433,6 +434,29 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
         return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       } catch (e) {
         return new Response(JSON.stringify({ error: `Failed to fetch from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+      }
+    }
+
+    if (url.pathname === '/history' || url.pathname.startsWith('/history/')) {
+      let d = url.pathname.replace(/^\/history\/?/, '').toLowerCase();
+      if (!d) d = url.searchParams.get("domain")?.toLowerCase();
+      if (!d) {
+        return new Response("Usage: curl ${url.origin}/history/<DOMAIN>?apikey=<KEY>\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+      }
+      
+      const apikey = url.searchParams.get("apikey") || request.headers.get("x-api-key");
+      if (!apikey) {
+        return new Response(JSON.stringify({ error: "API key is required for historical DNS. Please provide ?apikey= or X-API-Key header. (e.g. SecurityTrails API Key)" }) + "\\n", { status: 401, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+      }
+
+      try {
+        const res = await fetch(`https://api.securitytrails.com/v1/history/${d}/dns/a`, { 
+           headers: { accept: "application/json", "APIKEY": apikey }
+        });
+        const data = await res.json();
+        return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }, status: res.status});
+      } catch(e) {
+        return new Response(JSON.stringify({ error: "Failed to fetch DNS history from SecurityTrails." }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       }
     }
 
@@ -878,6 +902,28 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
     <pre class="try-response" id="res-security"></pre>
   </div>
 
+  <!-- HISTORY ENDPOINT -->
+  <div class="endpoint-card" id="history">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/history/{domain}</span></div>
+    <p class="endpoint-desc">Returns historical DNS A records from SecurityTrails.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="history-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>API Key</label>
+        <input class="param-input" placeholder="SecurityTrails API Key" id="history-apikey" value="" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-history"></code>
+      <button class="copy-btn" onclick="copyCurl('history')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('history')">Send Request</button></div>
+    <pre class="try-response" id="res-history"></pre>
+  </div>
+
   <!-- MY IP ENDPOINT -->
   <div class="endpoint-card" id="myip">
     <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/</span></div>
@@ -923,6 +969,9 @@ function getUrl(id) {
   } else if (id === 'ssl') {
     const provider = document.getElementById('ssl-provider').value;
     if (provider !== 'certspotter') url.searchParams.set('provider', provider);
+  } else if (id === 'history') {
+    const key = document.getElementById('history-apikey').value.trim();
+    if (key) url.searchParams.set('apikey', key);
   }
   
   // Return decoded URL string to make cURL look clean
@@ -930,7 +979,7 @@ function getUrl(id) {
 }
 
 function updateAll() {
-  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'myip'].forEach(id => {
+  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'history', 'myip'].forEach(id => {
     document.getElementById('curl-' + id).textContent = 'curl "' + getUrl(id) + '"';
   });
 }

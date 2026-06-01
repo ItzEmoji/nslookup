@@ -806,6 +806,13 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
         </div>
         <label class="toggle-switch"><input type="checkbox" id="setSecurity" onchange="toggleSetting('features','enableSecurity',this.checked)"><span class="toggle-slider"></span></label>
       </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>SSL Certificates</strong>
+          <span>Fetch SSL Certificate data</span>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setSsl" onchange="toggleSetting('features','enableSsl',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
       <div style="margin-top: 12px;">
         <span class="small" style="display:block; margin-bottom: 6px;">RDAP Server URL</span>
         <input type="text" class="settings-input" id="setRdapServer" onchange="updateSettingText('advanced','rdapServer',this.value)" placeholder="https://rdap.org/domain/">
@@ -820,6 +827,10 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
           <option value="certspotter">CertSpotter</option>
           <option value="crt.sh">crt.sh</option>
         </select>
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">SecurityTrails API Key (History)</span>
+        <input type="text" class="settings-input" id="setHistoryKey" onchange="updateSettingText('advanced','historyKey',this.value)" placeholder="Enter key...">
       </div>
     </div>
 
@@ -1005,8 +1016,8 @@ const defaultSettings = {
     Cloudflare: { url:'https://cloudflare-dns.com/dns-query', active:true },
     Google: { url:'https://dns.google/resolve', active:true }
   },
-  features: { animations:true, enableWhois:false, enableSecurity:true },
-  advanced: { rdapServer:'https://rdap.org/domain/', timeout:5000, sslProvider:'certspotter' },
+  features: { animations:true, enableWhois:false, enableSecurity:true, enableSsl:false },
+  advanced: { rdapServer:'https://rdap.org/domain/', timeout:5000, sslProvider:'certspotter', historyKey:'' },
   defaultRecords: ['A','AAAA','MX','TXT','NS','CNAME','SOA']
 };
 
@@ -1090,10 +1101,16 @@ function loadSettings() {
   document.getElementById('setAnimations').checked = userSettings.features.animations;
   document.getElementById('setWhois').checked = userSettings.features.enableWhois;
   document.getElementById('setSecurity').checked = userSettings.features.enableSecurity !== false;
+  if (document.getElementById('setSsl')) {
+    document.getElementById('setSsl').checked = userSettings.features.enableSsl === true;
+  }
   document.getElementById('setRdapServer').value = userSettings.advanced.rdapServer;
   document.getElementById('setTimeout').value = userSettings.advanced.timeout;
   if (document.getElementById('setSslProvider')) {
     document.getElementById('setSslProvider').value = userSettings.advanced.sslProvider || 'certspotter';
+  }
+  if (document.getElementById('setHistoryKey')) {
+    document.getElementById('setHistoryKey').value = userSettings.advanced.historyKey || '';
   }
 
   applyTheme(userSettings.theme);
@@ -1509,6 +1526,15 @@ async function triggerLookup(inputId) {
   }
 
   let whoisPromise = null;
+  let historyPromise = null;
+  let sslPromise = null;
+
+  if (userSettings.features.enableSsl && !isReverseSearch && !isSubdomain(domain)) {
+    sslPromise = fetch('/ssl/' + domain + '?provider=' + encodeURIComponent(userSettings.advanced.sslProvider))
+      .then(r => r.ok ? r.json() : { error: 'HTTP ' + r.status })
+      .catch(e => ({ error: e.message }));
+  }
+
   if (userSettings.features.enableWhois && !isReverseSearch && !isSubdomain(domain)) {
     let rdapUrl = userSettings.advanced.rdapServer;
     if (!rdapUrl.endsWith('/')) rdapUrl += '/';
@@ -1516,6 +1542,12 @@ async function triggerLookup(inputId) {
       .then(r => r.ok ? r.json() : { error: 'HTTP ' + r.status })
       .catch(e => ({ error: e.message }));
   } else { whoisPromise = Promise.resolve(null); }
+
+  if (userSettings.advanced.historyKey && !isReverseSearch && !isSubdomain(domain)) {
+    historyPromise = fetch('/history/' + domain + '?apikey=' + encodeURIComponent(userSettings.advanced.historyKey))
+      .then(r => r.ok ? r.json() : { error: 'HTTP ' + r.status })
+      .catch(e => ({ error: e.message }));
+  }
 
   const allResults = await Promise.all(fetchPromises);
 
@@ -1539,8 +1571,28 @@ async function triggerLookup(inputId) {
 
   if (whoisPromise) {
     whoisPromise.then(whoisResult => {
-      latestData.whois = whoisResult;
-      renderWhoisCard(whoisResult, domain);
+      if (whoisResult) {
+        latestData.whois = whoisResult;
+        renderWhoisCard(whoisResult, domain);
+      }
+    });
+  }
+  
+  if (historyPromise) {
+    historyPromise.then(historyResult => {
+      if (historyResult) {
+        latestData.history = historyResult;
+        renderHistoryCard(historyResult, domain);
+      }
+    });
+  }
+
+  if (sslPromise) {
+    sslPromise.then(sslResult => {
+      if (sslResult) {
+        latestData.ssl = sslResult;
+        renderSslCard(sslResult, domain);
+      }
     });
   }
 }
@@ -1687,6 +1739,65 @@ function renderWhoisCard(whoisData, domain) {
   container.appendChild(card);
 }
 
+function renderHistoryCard(historyData, domain) {
+  if (!historyData || !userSettings.advanced.historyKey) return;
+  const container = document.getElementById('results');
+  if (!container) return;
+  
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge">🕒</span> DNS History (A Records)</div></div>';
+  if (historyData.error || !historyData.records || historyData.records.length === 0) {
+    html += '<div class="small" style="color:var(--text-muted);">' + (historyData.error || "No historical records found.") + '</div>';
+  } else {
+    html += '<div class="whois-grid">';
+    let records = historyData.records.slice(0, 10); // Show max 10
+    for (const rec of records) {
+      let ip = rec.values ? rec.values.map(v => v.ip).join(', ') : 'Unknown';
+      let date = rec.first_seen ? new Date(rec.first_seen).toLocaleDateString() : 'Unknown Date';
+      html += '<span class="wlabel">' + date + '</span><span class="wvalue">' + ip + '</span>';
+    }
+    html += '</div>';
+    
+    html += '<details style="margin-top:16px;">'
+      + '<summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Raw History JSON</summary>'
+      + '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">'
+      + '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\\'' + encodeURIComponent(JSON.stringify(historyData, null, 2)) + '\\', this, true)">Copy JSON</button></div>'
+      + '<pre>' + JSON.stringify(historyData, null, 2) + '</pre></details>';
+  }
+  const card = document.createElement('div'); card.className = 'card';
+  card.style.animationDelay = '0s';
+  card.innerHTML = html;
+  container.appendChild(card);
+}
+
+function renderSslCard(sslData, domain) {
+  if (!sslData || !userSettings.features.enableSsl) return;
+  const container = document.getElementById('results');
+  if (!container) return;
+  
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge">🔒</span> SSL Certificates</div></div>';
+  if (sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
+    html += '<div class="small" style="color:var(--text-muted);">' + (sslData.error || "No SSL certificates found.") + '</div>';
+  } else {
+    html += '<div class="whois-grid">';
+    let records = Array.isArray(sslData) ? sslData.slice(0, 10) : [];
+    for (const rec of records) {
+      let subject = rec.dns_names ? rec.dns_names[0] : (rec.name_value || 'Unknown');
+      let date = rec.not_before ? new Date(rec.not_before).toLocaleDateString() : 'Unknown Date';
+      html += '<span class="wlabel">' + date + '</span><span class="wvalue">' + subject + '</span>';
+    }
+    html += '</div>';
+    html += '<details style="margin-top:16px;">'
+      + '<summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Raw SSL JSON</summary>'
+      + '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">'
+      + '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\\'' + encodeURIComponent(JSON.stringify(sslData, null, 2)) + '\\', this, true)">Copy JSON</button></div>'
+      + '<pre>' + JSON.stringify(sslData, null, 2) + '</pre></details>';
+  }
+  const card = document.createElement('div'); card.className = 'card';
+  card.style.animationDelay = '0s';
+  card.innerHTML = html;
+  container.appendChild(card);
+}
+
 function scrollToRecord(type) {
   const el = document.getElementById('record-' + type);
   if (el) { const card = el.closest('.card'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -1752,13 +1863,28 @@ if (path.startsWith('/ip/') || path === '/ip') {
     userSettings.defaultRecords = [];
     userSettings.features.enableWhois = true;
     userSettings.features.enableSecurity = false;
+    userSettings.features.enableSsl = false;
+} else if (path.startsWith('/ssl/') || path === '/ssl') {
+    domainToLookup = path.replace(/^\\/ssl\\/?/, '') || params.get('domain');
+    userSettings.defaultRecords = [];
+    userSettings.features.enableWhois = false;
+    userSettings.features.enableSecurity = false;
+    userSettings.features.enableSsl = true;
+} else if (path.startsWith('/security/') || path === '/security') {
+    domainToLookup = path.replace(/^\\/security\\/?/, '') || params.get('domain');
+    userSettings.defaultRecords = ['TXT', 'CAA'];
+    userSettings.features.enableWhois = false;
+    userSettings.features.enableSecurity = true;
+    userSettings.features.enableSsl = false;
 }
 
-if (!domainToLookup && (path === '/ip' || path === '/ipv4' || path === '/ipv6' || path === '/whois')) {
+if (!domainToLookup && (path === '/ip' || path === '/ipv4' || path === '/ipv6' || path === '/whois' || path === '/ssl' || path === '/security')) {
     let titleStr = 'IP-Search';
     if (path === '/ipv4') titleStr = 'IPv4-Search';
     if (path === '/ipv6') titleStr = 'IPv6-Search';
     if (path === '/whois') titleStr = 'WHOIS-Search';
+    if (path === '/ssl') titleStr = 'SSL-Search';
+    if (path === '/security') titleStr = 'Security-Search';
     document.title = titleStr;
     document.querySelector('h1').innerText = titleStr;
     const btn = document.querySelector('.toolbar button');
