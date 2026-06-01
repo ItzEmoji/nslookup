@@ -89,6 +89,9 @@ async function checkAbuse(targetDomain, isIPv4, isIPv6, customResolverUrl) {
 }
 
 function checkPropagation(finalResults, lookupTypes) {
+  let matches = 0;
+  let mismatches = 0;
+
   for (const type of lookupTypes) {
     const result = finalResults[type];
     if (!result) continue;
@@ -102,13 +105,23 @@ function checkPropagation(finalResults, lookupTypes) {
     });
     
     const firstSet = sets[0];
+    let isMatch = true;
     for (let i = 1; i < sets.length; i++) {
       if (sets[i] !== firstSet) {
-        return false;
+        isMatch = false; break;
       }
     }
+
+    if (!isMatch && (type === 'A' || type === 'AAAA')) {
+       const allHaveRecords = sets.every(s => s.length > 0);
+       if (allHaveRecords) continue; 
+    }
+
+    if (isMatch) matches++;
+    else mismatches++;
   }
-  return true;
+  
+  return mismatches === 0;
 }
 
 export default {
@@ -169,6 +182,8 @@ ENDPOINTS
     /ipv4/<domain>          Returns just the raw IPv4 string.
     /ipv6/<domain>          Returns just the raw IPv6 string.
     /whois/<domain>         Returns pure JSON RDAP/WHOIS data.
+    /ssl/<domain>           Returns certificate history from CertSpotter.
+    /security/<domain>      Returns security analysis (SPF, DMARC, CAA).
 
 SETTINGS & FEATURES
     - Privacy: No tracking, no logs.
@@ -396,6 +411,67 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
       return new Response(JSON.stringify(isAbuse) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
     }
 
+    if (url.pathname === '/ssl' || url.pathname.startsWith('/ssl/')) {
+      let d = url.pathname.replace(/^\/ssl\/?/, '').toLowerCase();
+      if (!d) d = url.searchParams.get("domain")?.toLowerCase();
+      if (!d) {
+        return new Response("Usage: curl ${url.origin}/ssl/<DOMAIN>?provider=certspotter|crt.sh\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+      }
+      
+      const provider = url.searchParams.get("provider") || "certspotter";
+      
+      try {
+        let res;
+        if (provider === "crt.sh") {
+          res = await fetch(`https://crt.sh/?q=%25.${d}&output=json`, { headers: { accept: "application/json", "User-Agent": "curl/8.0.1" } });
+        } else {
+          res = await fetch(`https://api.certspotter.com/v1/issuances?domain=${d}&include_subdomains=true&expand=dns_names`, { headers: { accept: "application/json", "User-Agent": "nslookup-worker/1.0" } });
+        }
+        
+        let data = [];
+        if (res.ok) data = await res.json();
+        return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+      } catch (e) {
+        return new Response(JSON.stringify({ error: `Failed to fetch from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+      }
+    }
+
+    if (url.pathname === '/security' || url.pathname.startsWith('/security/')) {
+      let d = url.pathname.replace(/^\/security\/?/, '').toLowerCase();
+      if (!d) d = url.searchParams.get("domain")?.toLowerCase();
+      if (!d) {
+        return new Response("Usage: curl ${url.origin}/security/<DOMAIN>\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+      }
+      
+      const firstResolverUrl = Object.values(apiResolvers)[0];
+      
+      const [txtRes, dmarcRes, caaRes] = await Promise.all([
+        queryDNSServer(d, "TXT", "Primary", firstResolverUrl),
+        queryDNSServer(`_dmarc.${d}`, "TXT", "Primary", firstResolverUrl),
+        queryDNSServer(d, "CAA", "Primary", firstResolverUrl)
+      ]);
+      
+      let spf = null, dmarc = null, dkim = false, hasCAA = false;
+      
+      if (txtRes.answers) {
+        for (const a of txtRes.answers) {
+          if (a.data && a.data.includes('v=spf1')) spf = a.data;
+          if (a.data && a.data.includes('v=DKIM1')) dkim = true;
+        }
+      }
+      if (dmarcRes.answers) {
+        for (const a of dmarcRes.answers) {
+          if (a.data && a.data.includes('v=DMARC1')) dmarc = a.data;
+        }
+      }
+      if (caaRes.answers && caaRes.answers.length > 0) {
+        hasCAA = true;
+      }
+      
+      const secData = { domain: d, spf, dmarc, dkim, hasCAA };
+      return new Response(JSON.stringify(secData, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+    }
+
     if (url.pathname === '/proxy-dns') {
       const targetUrl = url.searchParams.get("url");
       const name = url.searchParams.get("name");
@@ -574,6 +650,8 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
   <a href="#whois"><span class="method">GET</span><span class="path">/whois/{domain}</span></a>
   <a href="#abuse"><span class="method">GET</span><span class="path">/abuse/{domain}</span></a>
   <a href="#propagated"><span class="method">GET</span><span class="path">/propagated/{domain}</span></a>
+  <a href="#ssl"><span class="method">GET</span><span class="path">/ssl/{domain}</span></a>
+  <a href="#security"><span class="method">GET</span><span class="path">/security/{domain}</span></a>
   <a href="#myip"><span class="method">GET</span><span class="path">/</span></a>
 </aside>
 <div class="main">
@@ -757,6 +835,49 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
     <pre class="try-response" id="res-propagated"></pre>
   </div>
 
+  <!-- SSL ENDPOINT -->
+  <div class="endpoint-card" id="ssl">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/ssl/{domain}</span></div>
+    <p class="endpoint-desc">Returns SSL certificate history for the domain.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="ssl-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>Provider</label>
+        <select class="param-input" id="ssl-provider" onchange="updateAll()">
+          <option value="certspotter">CertSpotter</option>
+          <option value="crt.sh">crt.sh</option>
+        </select>
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-ssl"></code>
+      <button class="copy-btn" onclick="copyCurl('ssl')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('ssl')">Send Request</button></div>
+    <pre class="try-response" id="res-ssl"></pre>
+  </div>
+
+  <!-- SECURITY ENDPOINT -->
+  <div class="endpoint-card" id="security">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/security/{domain}</span></div>
+    <p class="endpoint-desc">Returns security analysis including SPF, DMARC, and CAA presence.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="security-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-security"></code>
+      <button class="copy-btn" onclick="copyCurl('security')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('security')">Send Request</button></div>
+    <pre class="try-response" id="res-security"></pre>
+  </div>
+
   <!-- MY IP ENDPOINT -->
   <div class="endpoint-card" id="myip">
     <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/</span></div>
@@ -799,6 +920,9 @@ function getUrl(id) {
   } else if (id === 'abuse') {
     const res = document.getElementById('abuse-resolver').value.trim();
     if (res) url.searchParams.set('resolver', res);
+  } else if (id === 'ssl') {
+    const provider = document.getElementById('ssl-provider').value;
+    if (provider !== 'certspotter') url.searchParams.set('provider', provider);
   }
   
   // Return decoded URL string to make cURL look clean
@@ -806,7 +930,7 @@ function getUrl(id) {
 }
 
 function updateAll() {
-  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'myip'].forEach(id => {
+  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'myip'].forEach(id => {
     document.getElementById('curl-' + id).textContent = 'curl "' + getUrl(id) + '"';
   });
 }

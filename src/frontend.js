@@ -814,6 +814,13 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
         <span class="small" style="display:block; margin-bottom: 6px;">Resolver Timeout (ms)</span>
         <input type="number" class="settings-input" id="setTimeout" onchange="updateSettingText('advanced','timeout',parseInt(this.value))" placeholder="5000">
       </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">SSL Provider</span>
+        <select class="settings-input" id="setSslProvider" onchange="updateSettingText('advanced','sslProvider',this.value)">
+          <option value="certspotter">CertSpotter</option>
+          <option value="crt.sh">crt.sh</option>
+        </select>
+      </div>
     </div>
 
     <!-- DEFAULT RECORDS -->
@@ -999,7 +1006,7 @@ const defaultSettings = {
     Google: { url:'https://dns.google/resolve', active:true }
   },
   features: { animations:true, enableWhois:false, enableSecurity:true },
-  advanced: { rdapServer:'https://rdap.org/domain/', timeout:5000 },
+  advanced: { rdapServer:'https://rdap.org/domain/', timeout:5000, sslProvider:'certspotter' },
   defaultRecords: ['A','AAAA','MX','TXT','NS','CNAME','SOA']
 };
 
@@ -1085,6 +1092,9 @@ function loadSettings() {
   document.getElementById('setSecurity').checked = userSettings.features.enableSecurity !== false;
   document.getElementById('setRdapServer').value = userSettings.advanced.rdapServer;
   document.getElementById('setTimeout').value = userSettings.advanced.timeout;
+  if (document.getElementById('setSslProvider')) {
+    document.getElementById('setSslProvider').value = userSettings.advanced.sslProvider || 'certspotter';
+  }
 
   applyTheme(userSettings.theme);
   applyFont(userSettings.customFont);
