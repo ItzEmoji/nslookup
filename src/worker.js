@@ -430,7 +430,22 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
         }
         
         let data = [];
-        if (res.ok) data = await res.json();
+        if (res.ok) {
+          let text = await res.text();
+          if (provider === "crt.sh") {
+            text = text.replace(/\]\s*\[/g, ',');
+            text = text.replace(/}\s*{/g, '},{');
+          }
+          try {
+            data = JSON.parse(text);
+          } catch(err) {
+            try {
+              data = JSON.parse('[' + text.replace(/}\s*{/g, '},{') + ']');
+            } catch(err2) {
+              return new Response(JSON.stringify({ error: `Invalid JSON from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+            }
+          }
+        }
         return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       } catch (e) {
         return new Response(JSON.stringify({ error: `Failed to fetch from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
