@@ -973,6 +973,11 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
 
 <script>
 // ===== GLOBALS =====
+let MCU = null;
+import('https://esm.sh/@material/material-color-utilities@0.3.0').then(m => {
+  MCU = m;
+  if (userSettings.theme === 'custom') updateCustomTheme();
+});
 let latestData = null;
 let leafletMap = null;
 let queryHistory = JSON.parse(localStorage.getItem('lookup_history') || '[]');
@@ -1099,6 +1104,17 @@ function resetSettings() { if (confirm('Reset all settings to default?')) { loca
 function hexToRgb(hex) {
   const r = /^#?([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2})$/i.exec(hex);
   return r ? parseInt(r[1],16)+','+parseInt(r[2],16)+','+parseInt(r[3],16) : null;
+}
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return '#' + f(0) + f(8) + f(4);
 }
 
 function applyTheme(name) {
