@@ -416,7 +416,7 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
       let d = url.pathname.replace(/^\/ssl\/?/, '').toLowerCase();
       if (!d) d = url.searchParams.get("domain")?.toLowerCase();
       if (!d) {
-        return new Response("Usage: curl ${url.origin}/ssl/<DOMAIN>?provider=certspotter|crt.sh\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+        return new Response("Usage: curl ${url.origin}/ssl/<DOMAIN>?provider=certspotter|crt.sh\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
       }
       
       const provider = url.searchParams.get("provider") || "certspotter";
@@ -442,13 +442,13 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
             try {
               data = JSON.parse('[' + text.replace(/}\s*{/g, '},{') + ']');
             } catch(err2) {
-              return new Response(JSON.stringify({ error: `Invalid JSON from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+              return new Response(JSON.stringify({ error: `Invalid JSON from ${provider}` }) + "\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
             }
           }
         }
-        return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+        return new Response(JSON.stringify(data, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       } catch (e) {
-        return new Response(JSON.stringify({ error: `Failed to fetch from ${provider}` }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+        return new Response(JSON.stringify({ error: `Failed to fetch from ${provider}` }) + "\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       }
     }
 
@@ -456,12 +456,12 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
       let d = url.pathname.replace(/^\/history\/?/, '').toLowerCase();
       if (!d) d = url.searchParams.get("domain")?.toLowerCase();
       if (!d) {
-        return new Response("Usage: curl ${url.origin}/history/<DOMAIN>?apikey=<KEY>\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+        return new Response("Usage: curl ${url.origin}/history/<DOMAIN>?apikey=<KEY>\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
       }
       
       const apikey = url.searchParams.get("apikey") || request.headers.get("x-api-key");
       if (!apikey) {
-        return new Response(JSON.stringify({ error: "API key is required for historical DNS. Please provide ?apikey= or X-API-Key header. (e.g. SecurityTrails API Key)" }) + "\\n", { status: 401, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+        return new Response(JSON.stringify({ error: "API key is required for historical DNS. Please provide ?apikey= or X-API-Key header. (e.g. SecurityTrails API Key)" }) + "\n", { status: 401, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       }
 
       try {
@@ -469,9 +469,9 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
            headers: { accept: "application/json", "APIKEY": apikey }
         });
         const data = await res.json();
-        return new Response(JSON.stringify(data, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }, status: res.status});
+        return new Response(JSON.stringify(data, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }, status: res.status});
       } catch(e) {
-        return new Response(JSON.stringify({ error: "Failed to fetch DNS history from SecurityTrails." }) + "\\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+        return new Response(JSON.stringify({ error: "Failed to fetch DNS history from SecurityTrails." }) + "\n", { status: 500, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
       }
     }
 
@@ -479,7 +479,7 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
       let d = url.pathname.replace(/^\/security\/?/, '').toLowerCase();
       if (!d) d = url.searchParams.get("domain")?.toLowerCase();
       if (!d) {
-        return new Response("Usage: curl ${url.origin}/security/<DOMAIN>\\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
+        return new Response("Usage: curl ${url.origin}/security/<DOMAIN>\n", { status: 400, headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" } });
       }
       
       const firstResolverUrl = Object.values(apiResolvers)[0];
@@ -508,7 +508,7 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
       }
       
       const secData = { domain: d, spf, dmarc, dkim, hasCAA };
-      return new Response(JSON.stringify(secData, null, jsonSpace) + "\\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+      return new Response(JSON.stringify(secData, null, jsonSpace) + "\n", { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
     }
 
     if (url.pathname === '/proxy-dns') {

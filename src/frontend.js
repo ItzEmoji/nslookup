@@ -1477,6 +1477,15 @@ async function triggerLookup(inputId) {
   let domain = document.getElementById(inputId).value.trim().toLowerCase();
   if (!domain) return;
 
+  const ipv4Regex = /^(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)){3}$/;
+  const isIPv6 = domain.includes(':') && /^[0-9a-fA-F:]+$/.test(domain);
+  const isValidDomain = /^[a-zA-Z0-9\u00A1-\uFFFF.-]+\.[a-zA-Z0-9\u00A1-\uFFFF]{2,}$/.test(domain) || domain === 'localhost';
+
+  if (!ipv4Regex.test(domain) && !isIPv6 && !isValidDomain) {
+    showToast('Please enter a valid domain or IP address', 'error');
+    return;
+  }
+
   document.getElementById('domainHome').value = domain;
   document.getElementById('domainTop').value = domain;
 
@@ -1487,9 +1496,6 @@ async function triggerLookup(inputId) {
   history.pushState({}, '', '/?domain=' + encodeURIComponent(domain));
   window.scrollTo({ top: 0 });
   addToHistory(domain);
-
-  const ipv4Regex = /^(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]\\d|\\d)){3}$/;
-  const isIPv6 = domain.includes(':') && /^[0-9a-fA-F:]+$/.test(domain);
 
   let lookupTypes = [...userSettings.defaultRecords];
   let dnsQueryName = domain;
@@ -1671,7 +1677,7 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
   // Security Analysis
   if (userSettings.features.enableSecurity && !isReverse) {
     const sec = analyzeSecurityRecords(dnsData);
-    let secHtml = '<div class="card-header"><div class="card-title"><span class="type-badge">🛡</span> Security Analysis</div></div>';
+    let secHtml = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span> Security Analysis</div></div>';
     secHtml += '<div class="security-grid">';
     secHtml += '<div class="security-item ' + (sec.spf ? 'found' : 'missing') + '">'
       + '<div class="label">SPF</div>'
@@ -1699,7 +1705,7 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
 function renderWhoisCard(whoisData, domain) {
   if (!whoisData || !userSettings.features.enableWhois) return;
   const container = document.getElementById('results');
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge">📋</span> WHOIS / RDAP</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></span> WHOIS / RDAP</div></div>';
   if (whoisData.error) {
     if (whoisData.error === "Skipped") return;
     html += '<div class="small" style="color:var(--text-muted);">' + whoisData.error + '</div>';
@@ -1744,7 +1750,7 @@ function renderHistoryCard(historyData, domain) {
   const container = document.getElementById('results');
   if (!container) return;
   
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge">🕒</span> DNS History (A Records)</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> DNS History (A Records)</div></div>';
   if (historyData.error || !historyData.records || historyData.records.length === 0) {
     html += '<div class="small" style="color:var(--text-muted);">' + (historyData.error || "No historical records found.") + '</div>';
   } else {
@@ -1774,16 +1780,26 @@ function renderSslCard(sslData, domain) {
   const container = document.getElementById('results');
   if (!container) return;
   
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge">🔒</span> SSL Certificates</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span> SSL Certificates</div></div>';
   if (sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
     html += '<div class="small" style="color:var(--text-muted);">' + (sslData.error || "No SSL certificates found.") + '</div>';
   } else {
-    html += '<div class="whois-grid">';
+    html += '<div style="display:grid; gap:12px;">';
     let records = Array.isArray(sslData) ? sslData.slice(0, 10) : [];
     for (const rec of records) {
-      let subject = rec.dns_names ? rec.dns_names[0] : (rec.name_value || 'Unknown');
-      let date = rec.not_before ? new Date(rec.not_before).toLocaleDateString() : 'Unknown Date';
-      html += '<span class="wlabel">' + date + '</span><span class="wvalue">' + subject + '</span>';
+      let subjects = rec.dns_names ? rec.dns_names.join(', ') : (rec.name_value || 'Unknown').replace(/\\n/g, ', ');
+      let notBefore = rec.not_before ? new Date(rec.not_before).toLocaleDateString() : 'Unknown Date';
+      let notAfter = rec.not_after ? new Date(rec.not_after).toLocaleDateString() : 'Unknown Date';
+      let issuer = rec.issuer_name || (rec.issuer && rec.issuer.name) || 'Unknown Issuer';
+      if (issuer.includes('CN=')) issuer = issuer.split('CN=')[1].split(',')[0];
+      else if (issuer.includes('O=')) issuer = issuer.split('O=')[1].split(',')[0];
+
+      html += '<div class="consensus" style="margin-bottom:0; padding:12px;">';
+      html += '<div style="font-weight:bold; font-family:var(--font-mono); margin-bottom:4px; word-break:break-all;">' + subjects + '</div>';
+      html += '<div class="small" style="color:var(--text-muted); display:flex; gap:16px; flex-wrap:wrap;">';
+      html += '<span><strong>Issuer:</strong> ' + issuer + '</span>';
+      html += '<span><strong>Valid:</strong> ' + notBefore + ' - ' + notAfter + '</span>';
+      html += '</div></div>';
     }
     html += '</div>';
     html += '<details style="margin-top:16px;">'
@@ -1879,12 +1895,12 @@ if (path.startsWith('/ip/') || path === '/ip') {
 }
 
 if (!domainToLookup && (path === '/ip' || path === '/ipv4' || path === '/ipv6' || path === '/whois' || path === '/ssl' || path === '/security')) {
-    let titleStr = 'IP-Search';
-    if (path === '/ipv4') titleStr = 'IPv4-Search';
-    if (path === '/ipv6') titleStr = 'IPv6-Search';
-    if (path === '/whois') titleStr = 'WHOIS-Search';
-    if (path === '/ssl') titleStr = 'SSL-Search';
-    if (path === '/security') titleStr = 'Security-Search';
+    let titleStr = 'IP-Lookup';
+    if (path === '/ipv4') titleStr = 'IPv4-Lookup';
+    if (path === '/ipv6') titleStr = 'IPv6-Lookup';
+    if (path === '/whois') titleStr = 'WHOIS-Lookup';
+    if (path === '/ssl') titleStr = 'SSL-Lookup';
+    if (path === '/security') titleStr = 'Security-Lookup';
     document.title = titleStr;
     document.querySelector('h1').innerText = titleStr;
     const btn = document.querySelector('.toolbar button');
