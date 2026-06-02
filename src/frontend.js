@@ -12,6 +12,7 @@ export const html = `
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <style>
 /* === M3 DESIGN TOKENS === */
@@ -442,7 +443,7 @@ summary {
 }
 summary:hover { opacity: 1; color: var(--link); }
 summary::marker { content: ''; }
-.chevron { transition: transform 0.25s ease; width: 14px; height: 14px; }
+.chevron { transition: transform 0.25s ease; display: inline-block; font-size: 20px; width: 20px; height: 20px; line-height: 1; }
 details[open] summary .chevron { transform: rotate(90deg); }
 pre {
   white-space: pre-wrap; overflow-x: auto; font-size: 13px; color: var(--text-muted);
@@ -719,6 +720,11 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
   background: rgba(var(--info-rgb), 0.05);
   border-color: var(--link);
 }
+
+/* Sortable & SVG adjustments */
+.sortable-ghost { opacity: 0.4; background: var(--surface-container-high) !important; border: 2px dashed var(--primary); }
+.card-header { cursor: grab; }
+.card-header:active { cursor: grabbing; }
 </style>
 </head>
 
@@ -1068,8 +1074,11 @@ function showToast(msg, type) {
   const c = document.getElementById('toastContainer');
   const t = document.createElement('div');
   t.className = 'toast';
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
-  t.innerHTML = '<span style="font-weight:700;">' + icon + '</span> ' + msg;
+  const iconCheck = '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">check_circle</span>';
+  const iconCross = '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">cancel</span>';
+  const iconInfo = '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">info</span>';
+  const icon = type === 'success' ? iconCheck : type === 'error' ? iconCross : iconInfo;
+  t.innerHTML = '<span style="display:inline-flex;align-items:center;font-weight:600;">' + icon + msg + '</span>';
   c.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; t.style.transition = 'all 0.3s ease'; setTimeout(() => t.remove(), 300); }, 2500);
 }
@@ -1473,12 +1482,16 @@ function expandIPv6ToArpa(ip) {
   return nibbles + '.ip6.arpa';
 }
 
-function copyToClipboard(text, btnEl, isEncoded = false) {
-  const actualText = isEncoded ? decodeURIComponent(text) : text;
-  navigator.clipboard.writeText(actualText).then(() => {
-    if (btnEl) { btnEl.classList.add('copied'); btnEl.textContent = '✓ Copied'; setTimeout(() => { btnEl.classList.remove('copied'); btnEl.textContent = 'Copy'; }, 1500); }
+async function copyToClipboard(text, btnEl, isEncoded = false) {
+  try {
+    const txt = isEncoded ? decodeURIComponent(text) : text;
+    await navigator.clipboard.writeText(txt);
+    const iconCheck = '<span class="material-symbols-rounded" style="vertical-align:text-bottom;margin-right:4px;font-size:16px;">check_circle</span>';
+    if (btnEl) { btnEl.classList.add('copied'); btnEl.innerHTML = iconCheck + 'Copied'; setTimeout(() => { btnEl.classList.remove('copied'); btnEl.textContent = 'Copy'; }, 1500); }
     else showToast('Copied!', 'success');
-  });
+  } catch (err) {
+    showToast('Failed to copy', 'error');
+  }
 }
 
 function getTimingClass(ms) {
@@ -1499,7 +1512,14 @@ async function queryDNS(domain, type, resolverName, resolverUrl) {
     clearTimeout(tid);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    return { resolver: resolverName, duration: Date.now() - started, answers: data.Answer || [], error: null };
+    let errorStr = null;
+    if (data.Status === 3) errorStr = 'NXDOMAIN (Domain does not exist)';
+    else if (data.Status === 2) errorStr = 'SERVFAIL (Server failed to complete the request)';
+    else if (data.Status === 5) errorStr = 'REFUSED (Query refused)';
+    else if (data.Status === 1) errorStr = 'FORMERR (Format Error)';
+    else if (data.Status === 4) errorStr = 'NOTIMP (Not Implemented)';
+    else if (data.Status !== 0 && data.Status !== undefined) errorStr = 'DNS Error (Status: ' + data.Status + ')';
+    return { resolver: resolverName, duration: Date.now() - started, answers: data.Answer || [], error: errorStr };
   } catch (err) {
     clearTimeout(tid);
     return { resolver: resolverName, duration: Date.now() - started, answers: [], error: err.name === 'AbortError' ? 'Timeout exceeded' : err.message };
@@ -1717,15 +1737,27 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
         html += '<div class="consensus-row">'
           + '<div class="consensus-value">' + displayVal + '</div>'
           + '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\\'' + cv.value.replace(/'/g, "\\\\'") + '\\', this)">Copy</button></div>'
-          + '<div class="consensus-meta"><span class="check">✓</span> Confirmed by ' + cv.confirmedBy.join(', ') + '</div>';
+          + '<div class="consensus-meta"><span class="check material-symbols-rounded" style="display:inline-flex;align-items:center;margin-right:4px;font-size:16px;">check_circle</span> Confirmed by ' + cv.confirmedBy.join(', ') + '</div>';
         if (i < section.consensus.values.length - 1) html += '<div class="consensus-divider"></div>';
       }
       html += '</div>';
     } else {
-      html += '<div class="small" style="margin-top: 10px; opacity: 0.5;">No records found</div>';
+      const errors = [];
+      for (const resName in section.resolvers) {
+        if (section.resolvers[resName].error) errors.push(section.resolvers[resName].error);
+      }
+      if (errors.length > 0) {
+        const errorMap = {};
+        for (const e of errors) { errorMap[e] = (errorMap[e] || 0) + 1; }
+        const sortedErrors = Object.entries(errorMap).sort((a,b) => b[1] - a[1]);
+        const commonError = sortedErrors[0][0];
+        html += '<div style="margin-top: 12px;"><span class="error-badge badge" style="font-size: 13px; padding: 6px 12px;">' + commonError + '</span></div>';
+      } else {
+        html += '<div class="small" style="margin-top: 10px; opacity: 0.5;">No records found</div>';
+      }
     }
 
-    html += '<details id="record-' + type + '"><summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Resolver Details</summary>';
+    html += '<details id="record-' + type + '"><summary><span class="material-symbols-rounded chevron">chevron_right</span> Resolver Details</summary>';
     for (const resName in section.resolvers) {
       const rd = section.resolvers[resName];
       html += '<div class="resolver-result"><div class="resolver-header">'
@@ -1749,24 +1781,24 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
   // Security Analysis
   if (userSettings.features.enableSecurity && !isReverse) {
     const sec = analyzeSecurityRecords(dnsData);
-    let secHtml = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span> Security Analysis</div></div>';
+    let secHtml = '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">security</span></span> Security Analysis</div></div>';
     secHtml += '<div class="security-grid">';
     secHtml += '<div class="security-item ' + (sec.spf ? 'found' : 'missing') + '">'
       + '<div class="label">SPF</div>'
-      + '<div class="status">' + (sec.spf ? '✓ Found' : '✕ Not found') + '</div>'
+      + '<div class="status" style="display:inline-flex;align-items:center;">' + (sec.spf ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Found' : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') + '</div>'
       + (sec.spf ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" onclick="copyToClipboard(\\'' + sec.spf.replace(/"/g, '').replace(/'/g, "\\\\'") + '\\', this)">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' + sec.spf.replace(/"/g, '') + '</pre>' : '')
       + '</div>';
     secHtml += '<div class="security-item ' + (sec.dmarc ? 'found' : 'missing') + '">'
       + '<div class="label">DMARC</div>'
-      + '<div class="status">' + (sec.dmarc ? '✓ Detected' : '✕ Not found') + '</div>'
+      + '<div class="status" style="display:inline-flex;align-items:center;">' + (sec.dmarc ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Detected' : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') + '</div>'
       + (sec.dmarc ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" onclick="copyToClipboard(\\'' + sec.dmarc.replace(/"/g, '').replace(/'/g, "\\\\'") + '\\', this)">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' + sec.dmarc.replace(/"/g, '') + '</pre>' : '')
       + '</div>';
     secHtml += '<div class="security-item ' + (sec.dkim ? 'found' : 'missing') + '">'
       + '<div class="label">DKIM</div>'
-      + '<div class="status">' + (sec.dkim ? '✓ Detected' : '○ Not in TXT') + '</div></div>';
+      + '<div class="status" style="display:inline-flex;align-items:center;">' + (sec.dkim ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Detected' : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--outline);font-size:16px;">info</span> Not in TXT') + '</div></div>';
     secHtml += '<div class="security-item ' + (sec.hasCAA ? 'found' : 'missing') + '">'
       + '<div class="label">CAA</div>'
-      + '<div class="status">' + (sec.hasCAA ? '✓ Configured' : '✕ Not found') + '</div></div>';
+      + '<div class="status" style="display:inline-flex;align-items:center;">' + (sec.hasCAA ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Configured' : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') + '</div></div>';
     secHtml += '</div>';
     appendCard(secHtml);
   }
@@ -1777,7 +1809,7 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
 function renderWhoisCard(whoisData, domain) {
   if (!whoisData || !userSettings.features.enableWhois) return;
   const container = document.getElementById('results');
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></span> WHOIS / RDAP</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">contact_page</span></span> WHOIS / RDAP</div></div>';
   if (whoisData.error) {
     if (whoisData.error === "Skipped") return;
     html += '<div class="small" style="color:var(--text-muted);">' + whoisData.error + '</div>';
@@ -1804,7 +1836,7 @@ function renderWhoisCard(whoisData, domain) {
     html += '</div>';
 
     html += '<details style="margin-top:16px;">'
-      + '<summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Raw RDAP JSON' 
+      + '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw RDAP JSON' 
       + (whoisData._latency ? ' <span style="font-size:12px;opacity:0.5;font-weight:normal;margin-left:8px;">(' + whoisData._latency + 'ms)</span>' : '')
       + '</summary>'
       + '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">'
@@ -1822,7 +1854,7 @@ function renderHistoryCard(historyData, domain) {
   const container = document.getElementById('results');
   if (!container) return;
   
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span> DNS History (A Records)</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">history</span></span> DNS History (A Records)</div></div>';
   if (historyData.error || !historyData.records || historyData.records.length === 0) {
     html += '<div class="small" style="color:var(--text-muted);">' + (historyData.error || "No historical records found.") + '</div>';
   } else {
@@ -1836,7 +1868,7 @@ function renderHistoryCard(historyData, domain) {
     html += '</div>';
     
     html += '<details style="margin-top:16px;">'
-      + '<summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Raw History JSON</summary>'
+      + '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw History JSON</summary>'
       + '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">'
       + '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\\'' + encodeURIComponent(JSON.stringify(historyData, null, 2)) + '\\', this, true)">Copy JSON</button></div>'
       + '<pre>' + JSON.stringify(historyData, null, 2) + '</pre></details>';
@@ -1852,7 +1884,7 @@ function renderSslCard(sslData, domain) {
   const container = document.getElementById('results');
   if (!container) return;
   
-  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span> SSL Certificates</div></div>';
+  let html = '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">lock</span></span> SSL Certificates</div></div>';
   if (sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
     html += '<div class="small" style="color:var(--text-muted);">' + (sslData.error || "No SSL certificates found.") + '</div>';
   } else {
@@ -1875,7 +1907,7 @@ function renderSslCard(sslData, domain) {
     }
     html += '</div>';
     html += '<details style="margin-top:16px;">'
-      + '<summary><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg> Raw SSL JSON</summary>'
+      + '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw SSL JSON</summary>'
       + '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">'
       + '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\\'' + encodeURIComponent(JSON.stringify(sslData, null, 2)) + '\\', this, true)">Copy JSON</button></div>'
       + '<pre>' + JSON.stringify(sslData, null, 2) + '</pre></details>';
@@ -1985,6 +2017,17 @@ if (!domainToLookup && (path === '/ip' || path === '/ipv4' || path === '/ipv6' |
 if (domainToLookup) {
     document.getElementById('domainHome').value = domainToLookup;
     triggerLookup('domainHome');
+}
+
+// Initialize Sortable for drag-and-drop
+if (typeof Sortable !== 'undefined') {
+  new Sortable(document.getElementById('results'), {
+    animation: 150,
+    handle: '.card-header',
+    ghostClass: 'sortable-ghost',
+    delay: 50,
+    delayOnTouchOnly: true
+  });
 }
 </script>
 </body>

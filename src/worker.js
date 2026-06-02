@@ -14,7 +14,14 @@ async function queryDNSServer(domain, type, resolverName, resolverUrl) {
     clearTimeout(timeoutId);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    return { resolver: resolverName, answers: data.Answer || [] };
+    let errorStr = null;
+    if (data.Status === 3) errorStr = 'NXDOMAIN (Domain does not exist)';
+    else if (data.Status === 2) errorStr = 'SERVFAIL (Server failed to complete the request)';
+    else if (data.Status === 5) errorStr = 'REFUSED (Query refused)';
+    else if (data.Status === 1) errorStr = 'FORMERR (Format Error)';
+    else if (data.Status === 4) errorStr = 'NOTIMP (Not Implemented)';
+    else if (data.Status !== 0 && data.Status !== undefined) errorStr = `DNS Error (Status: ${data.Status})`;
+    return { resolver: resolverName, answers: data.Answer || [], error: errorStr };
   } catch (err) {
     clearTimeout(timeoutId);
     return { resolver: resolverName, answers: [], error: err.name === 'AbortError' ? 'Timeout' : err.message };
@@ -1063,10 +1070,13 @@ updateAll();
       return new Response(clientIP + "\n", { headers: { "content-type": "text/plain", "Access-Control-Allow-Origin": "*" }});
     }
 
-
-
     const ipv4Regex = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
     const isIPv6 = targetDomain.includes(':') && /^[0-9a-fA-F:]+$/.test(targetDomain);
+    const isValidDomain = /^[a-zA-Z0-9\u00A1-\uFFFF.-]+\.[a-zA-Z0-9\u00A1-\uFFFF]{2,}$/.test(targetDomain) || targetDomain === 'localhost';
+
+    if (!ipv4Regex.test(targetDomain) && !isIPv6 && !isValidDomain) {
+      return new Response(JSON.stringify({ error: "Invalid domain or IP address format" }, null, jsonSpace) + "\n", { status: 400, headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }});
+    }
 
     let lookupTypes = ["A", "AAAA", "MX", "TXT", "NS", "CAA", "CNAME", "SOA"];
     let dnsQueryName = targetDomain;
