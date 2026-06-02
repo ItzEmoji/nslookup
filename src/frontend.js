@@ -668,6 +668,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
 }
 .font-preset-tag:hover { border-color: var(--accent); color: var(--text-secondary); }
 .font-preset-tag.active { border-color: var(--link); color: var(--link); background: rgba(var(--info-rgb), 0.05); }
+.font-preset-tag .resolver-actions { display: none; align-items: center; gap: 4px; margin-left: 4px; }
+.font-preset-tag:hover .resolver-actions { display: inline-flex; }
 
 /* === TOAST === */
 .toast-container {
@@ -703,6 +705,19 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
   .theme-editor { grid-template-columns: 1fr; }
   .corner-actions { top: 16px; right: 16px; }
   .domain-header h2 { font-size: 22px; }
+}
+/* === RESOLVER CARDS === */
+.resolver-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: 12px 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.resolver-card:hover { border-color: var(--accent); }
+.resolver-card.editing {
+  background: rgba(var(--info-rgb), 0.05);
+  border-color: var(--link);
 }
 </style>
 </head>
@@ -756,14 +771,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
     <div class="settings-section">
       <div class="settings-section-title">Appearance</div>
 
-      <select id="themeSelect" onchange="changeTheme()" style="margin-bottom: 8px;">
-        <option value="blue">Material You (Blue)</option>
-        <option value="green">Material You (Green)</option>
-        <option value="purple">Material You (Purple)</option>
-        <option value="red">Material You (Red)</option>
-        <option value="orange">Material You (Orange)</option>
-        <option value="custom">Custom Accent</option>
-      </select>
+      <div class="font-presets" id="themePresets" style="margin-bottom: 8px;">
+        <div class="font-preset-tag" data-theme="blue" onclick="applyTheme('blue')">Blue</div>
+        <div class="font-preset-tag" data-theme="green" onclick="applyTheme('green')">Green</div>
+        <div class="font-preset-tag" data-theme="purple" onclick="applyTheme('purple')">Purple</div>
+        <div class="font-preset-tag" data-theme="red" onclick="applyTheme('red')">Red</div>
+        <div class="font-preset-tag" data-theme="orange" onclick="applyTheme('orange')">Orange</div>
+        <div class="font-preset-tag" data-theme="custom" onclick="applyTheme('custom')">Custom</div>
+      </div>
 
       <div id="customThemeEditor" class="theme-editor hidden">
         <div class="color-picker-group"><input type="color" id="cAccent" oninput="updateCustomTheme()" onchange="updateCustomTheme()"> <span class="small">Accent Color</span></div>
@@ -844,12 +859,17 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--m
     <!-- RESOLVERS -->
     <div class="settings-section">
       <div class="settings-section-title">Resolvers</div>
-      <span style="display:block; margin-bottom: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted);">Click a card to enable/disable the resolver.</span>
-      <div id="resolverList"></div>
-      <div class="resolver-input-group">
-        <input type="text" class="settings-input" id="newResName" placeholder="Name">
-        <input type="text" class="settings-input" id="newResUrl" placeholder="https://...">
-        <button onclick="addResolver()">Save</button>
+      <div id="resolverList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+        <div style="font-size:12px; font-weight:600; margin-bottom:8px;">Add New Resolver</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <input type="text" class="settings-input" id="newResName" placeholder="Resolver Name">
+          <textarea class="settings-input" id="newResUrl" rows="2" style="resize:vertical; font-family:var(--font-mono); font-size:12px;" placeholder="https://..."></textarea>
+          <div style="display:flex; justify-content:flex-end;">
+            <button onclick="addResolver()">Add Resolver</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1093,7 +1113,7 @@ function loadSettings() {
     } catch(e) { console.error('Error loading settings'); }
   }
 
-  document.getElementById('themeSelect').value = userSettings.theme;
+  // Theme highlighted in applyTheme
   if (userSettings.theme === 'custom') {
     document.getElementById('cAccent').value = userSettings.customTheme.accent;
   }
@@ -1151,6 +1171,10 @@ function applyTheme(name) {
 
   if (name === 'custom') editor.classList.remove('hidden');
   else editor.classList.add('hidden');
+  
+  document.querySelectorAll('.font-preset-tag[data-theme]').forEach(tag => {
+    tag.classList.toggle('active', tag.dataset.theme === name);
+  });
   root.style.setProperty('--bg', source.bg);
   root.style.setProperty('--surface', source.surface);
   root.style.setProperty('--border', source.border);
@@ -1173,7 +1197,7 @@ function applyTheme(name) {
   saveSettings();
 }
 
-function changeTheme() { applyTheme(document.getElementById('themeSelect').value); }
+
 function updateCustomTheme() {
   const acc = document.getElementById('cAccent').value;
   userSettings.customTheme = {
@@ -1200,7 +1224,7 @@ function applyFont(fontName) {
   userSettings.customFont = actual === 'Roboto' ? '' : actual;
   saveSettings();
   document.getElementById('customFontInput').value = userSettings.customFont;
-  document.querySelectorAll('.font-preset-tag').forEach(tag => {
+  document.querySelectorAll('.font-preset-tag[data-font]').forEach(tag => {
     tag.classList.toggle('active', tag.dataset.font === actual || (actual === 'Roboto' && tag.dataset.font === 'Roboto'));
   });
 
@@ -1240,22 +1264,48 @@ function toggleRecord(record) {
 }
 
 // ===== RESOLVER SETTINGS =====
+let editingResolverName = null;
+
 function renderSettingsResolvers() {
   const c = document.getElementById('resolverList'); c.innerHTML = '';
+  c.className = '';
   for (const [name, data] of Object.entries(userSettings.resolvers)) {
-    const activeClass = data.active ? 'active' : '';
-    c.innerHTML += '<div class="selectable-row ' + activeClass + '" onclick="toggleResolver(\\'' + name + '\\')">'
-      + '<div style="overflow:hidden;text-overflow:ellipsis;flex:1;">'
-      + '<strong class="row-title" style="display:block;margin-bottom:4px;transition:color 0.2s;">' + name + '</strong>'
-      + '<span class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">' + data.url + '</span>'
-      + '</div><div style="display:flex;gap:8px;margin-left:12px;">'
-      + '<button onclick="event.stopPropagation();editResolver(\\'' + name + '\\')">Edit</button>'
-      + '<button class="btn-danger" onclick="event.stopPropagation();removeResolver(\\'' + name + '\\')">Del</button>'
-      + '</div></div>';
+    const isChecked = data.active ? 'checked' : '';
+    if (editingResolverName === name) {
+      c.innerHTML += '<div class="resolver-card editing">'
+        + '<input type="text" class="settings-input" id="editResName" value="' + name + '" placeholder="Name" style="margin-bottom:8px;">'
+        + '<textarea class="settings-input" id="editResUrl" rows="2" style="resize:vertical; margin-bottom:12px; font-family:var(--font-mono); font-size:12px;">' + data.url + '</textarea>'
+        + '<div style="display:flex; justify-content:flex-end; gap:8px;">'
+        + '<button class="btn-danger" style="margin-right:auto;" onclick="removeResolver(\\'' + name + '\\')">Delete</button>'
+        + '<button class="btn-outline" onclick="cancelEditResolver()">Cancel</button>'
+        + '<button onclick="saveEditResolver(\\'' + name + '\\')">Save</button>'
+        + '</div></div>';
+    } else {
+      const cardBorder = data.active ? 'border-color: var(--accent); background: rgba(var(--info-rgb), 0.03);' : '';
+      c.innerHTML += '<div class="resolver-card" style="' + cardBorder + '">'
+        + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">'
+        + '<div style="flex:1; min-width:0;">'
+        + '<div style="font-weight:600; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">' + name
+        + '<span class="material-symbols-rounded" style="font-size:14px; cursor:pointer; opacity:0.5;" onclick="editResolver(\\'' + name + '\\')" title="Edit">edit</span>'
+        + '</div>'
+        + '<div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="' + data.url + '">' + data.url + '</div>'
+        + '</div>'
+        + '<label class="toggle-switch" style="margin-top:2px;">'
+        + '<input type="checkbox" ' + isChecked + ' onchange="toggleResolver(\\'' + name + '\\')">'
+        + '<span class="toggle-slider"></span>'
+        + '</label>'
+        + '</div></div>';
+    }
   }
 }
 
-function toggleResolver(name) { if (userSettings.resolvers[name]) { userSettings.resolvers[name].active = !userSettings.resolvers[name].active; saveSettings(); renderSettingsResolvers(); } }
+function toggleResolver(name) { 
+  if (userSettings.resolvers[name]) { 
+    userSettings.resolvers[name].active = !userSettings.resolvers[name].active; 
+    saveSettings(); 
+    if (!editingResolverName) renderSettingsResolvers();
+  } 
+}
 
 function addResolver() {
   const n = document.getElementById('newResName').value.trim();
@@ -1277,8 +1327,30 @@ function quickAddResolver(name, url) {
 }
 
 function editResolver(name) {
-  const d = userSettings.resolvers[name];
-  if (d) { document.getElementById('newResName').value = name; document.getElementById('newResUrl').value = d.url; document.getElementById('newResName').focus(); }
+  editingResolverName = name;
+  renderSettingsResolvers();
+}
+
+function cancelEditResolver() {
+  editingResolverName = null;
+  renderSettingsResolvers();
+}
+
+function saveEditResolver(oldName) {
+  const newName = document.getElementById('editResName').value.trim();
+  const newUrl = document.getElementById('editResUrl').value.trim();
+  if (!newName || !newUrl) return showToast('Name and URL required', 'error');
+  
+  const active = userSettings.resolvers[oldName].active;
+  if (newName !== oldName) {
+    if (userSettings.resolvers[newName]) return showToast('Name already exists', 'error');
+    delete userSettings.resolvers[oldName];
+  }
+  userSettings.resolvers[newName] = { url: newUrl, active };
+  editingResolverName = null;
+  saveSettings();
+  renderSettingsResolvers();
+  showToast('Resolver updated', 'success');
 }
 
 function removeResolver(name) {
