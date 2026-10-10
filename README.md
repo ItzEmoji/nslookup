@@ -49,6 +49,7 @@ bun run dev      # local worker on http://localhost:8787, rebuilds on change
 | `bun run typecheck` | Type-check the worker and the tests. |
 | `bun run check` / `bun run fix` | Check / fix formatting and lint with Biome. |
 | `bun run verify` | Everything CI runs: format, lint, typecheck, test, build. |
+| `bun run preview` | Build and create a Preview deployment for the current branch. |
 | `bun run deploy` | Build and deploy to your Cloudflare account. |
 
 How the code is organized: [docs/architecture.md](docs/architecture.md).

@@ -55,5 +55,10 @@ from linting (see `biome.jsonc`) but still formatted.
 ## Build and deploy
 
 `bun run build` produces `dist/worker.js`. wrangler is configured with
-`no_bundle = true`, so it deploys exactly that file. `wrangler dev` and
-`wrangler deploy` run the build first (`[build]` in `wrangler.toml`).
+`"no_bundle": true`, so it deploys exactly that file. `wrangler dev`,
+`wrangler deploy` and `wrangler preview` run the build first (`"build"` in
+`wrangler.jsonc`).
+
+`bun run preview` creates a [Preview deployment](https://developers.cloudflare.com/workers/wrangler/configuration/#previews)
+named after the current git branch, with its own URL, without touching
+production. Preview-only settings live under `"previews"` in `wrangler.jsonc`.

@@ -94,7 +94,7 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
 
-      # wrangler runs `bun run build` itself (see [build] in wrangler.toml).
+      # wrangler runs `bun run build` itself (see "build" in wrangler.jsonc).
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

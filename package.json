@@ -10,6 +10,7 @@
     "dev": "wrangler dev",
     "build": "bun scripts/build.ts",
     "deploy": "wrangler deploy",
+    "preview": "wrangler preview",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "lint": "biome lint",
