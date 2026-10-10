@@ -1,11 +1,11 @@
-import { primaryResolver, type RequestContext, targetAfter } from "../context.ts";
+import { primaryResolver, type RequestContext, targetAfter, usage } from "../context.ts";
 import { queryResolver } from "../lib/dns.ts";
-import { json, text } from "../lib/http.ts";
+import { json } from "../lib/http.ts";
 
 /** GET /security/{domain}: SPF, DMARC, DKIM and CAA posture from the primary resolver. */
 export async function security(ctx: RequestContext): Promise<Response> {
   const domain = targetAfter(ctx, "/security");
-  if (!domain) return text("Usage: curl ${url.origin}/security/<DOMAIN>\n", 400);
+  if (!domain) return usage(ctx, "/security/<DOMAIN>");
 
   const resolverUrl = primaryResolver(ctx) ?? "";
   const [txt, dmarcTxt, caa] = await Promise.all([

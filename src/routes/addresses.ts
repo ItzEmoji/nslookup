@@ -1,4 +1,4 @@
-import { type RequestContext, targetAfter } from "../context.ts";
+import { type RequestContext, targetAfter, usage } from "../context.ts";
 import { collectAnswerData } from "../lib/dns.ts";
 import { json, reply, text } from "../lib/http.ts";
 
@@ -11,7 +11,7 @@ interface AddressResult {
 /** GET /ip/{domain}: IPv4 and IPv6 addresses as JSON. `?ipv4=false` / `?ipv6=false` drop one. */
 export async function addresses(ctx: RequestContext): Promise<Response> {
   const domain = targetAfter(ctx, "/ip");
-  if (!domain) return text("Usage: curl ${url.origin}/ip/<DOMAIN>\n", 400);
+  if (!domain) return usage(ctx, "/ip/<DOMAIN>");
 
   const result: AddressResult = { domain };
   if (ctx.url.searchParams.get("ipv4") !== "false") {
@@ -30,7 +30,7 @@ export function firstAddress(version: 4 | 6) {
 
   return async (ctx: RequestContext): Promise<Response> => {
     const domain = targetAfter(ctx, prefix);
-    if (!domain) return text(`Usage: curl ${ctx.url.origin}${prefix}/<DOMAIN>\n`, 400);
+    if (!domain) return usage(ctx, `${prefix}/<DOMAIN>`);
 
     const [address] = await collectAnswerData(domain, recordType, ctx.resolvers);
     if (!address) return reply("Not found\n", { status: 404 });

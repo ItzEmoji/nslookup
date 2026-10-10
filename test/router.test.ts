@@ -130,6 +130,15 @@ describe("API clients", () => {
     expect((await readLookup(res)).dns.A.consensus?.value).toBe("A-record");
   });
 
+  test.each(["/ip", "/ipv4", "/whois", "/abuse", "/ssl", "/history", "/security", "/propagated"])(
+    "%s without a target shows usage with the real origin",
+    async (path) => {
+      const res = await get(path);
+      expect(res.status).toBe(400);
+      expect(await res.text()).toStartWith(`Usage: curl ${ORIGIN}${path}/<DOMAIN>`);
+    },
+  );
+
   test("invalid targets are rejected", async () => {
     const res = await get("/not_a_domain");
     expect(res.status).toBe(400);

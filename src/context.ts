@@ -1,4 +1,5 @@
 import { DEFAULT_RESOLVERS, type Resolvers } from "./lib/dns.ts";
+import { text } from "./lib/http.ts";
 
 /** Everything a route needs, derived once per request. */
 export interface RequestContext {
@@ -61,6 +62,11 @@ export function createContext(request: Request): RequestContext {
 export function targetAfter(ctx: RequestContext, prefix: string): string | undefined {
   const fromPath = ctx.url.pathname.slice(prefix.length).replace(/^\//, "").toLowerCase();
   return fromPath || ctx.url.searchParams.get("domain")?.toLowerCase() || undefined;
+}
+
+/** 400 response showing how to call an endpoint, e.g. `usage(ctx, "/ip/<DOMAIN>")`. */
+export function usage(ctx: RequestContext, pattern: string): Response {
+  return text(`Usage: curl ${ctx.url.origin}${pattern}\n`, 400);
 }
 
 /** The first configured resolver, used where only one lookup is needed. */

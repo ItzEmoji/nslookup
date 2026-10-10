@@ -1,10 +1,10 @@
-import { type RequestContext, targetAfter } from "../context.ts";
-import { json, text } from "../lib/http.ts";
+import { type RequestContext, targetAfter, usage } from "../context.ts";
+import { json } from "../lib/http.ts";
 
 /** GET /history/{domain}: historical A records from SecurityTrails, with the caller's API key. */
 export async function history(ctx: RequestContext): Promise<Response> {
   const domain = targetAfter(ctx, "/history");
-  if (!domain) return text("Usage: curl ${url.origin}/history/<DOMAIN>?apikey=<KEY>\n", 400);
+  if (!domain) return usage(ctx, "/history/<DOMAIN>?apikey=<KEY>");
 
   const apiKey = ctx.url.searchParams.get("apikey") || ctx.request.headers.get("x-api-key");
   if (!apiKey) {

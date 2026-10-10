@@ -1,6 +1,6 @@
-import { type RequestContext, targetAfter } from "../context.ts";
+import { type RequestContext, targetAfter, usage } from "../context.ts";
 import { getBaseDomain } from "../lib/domain.ts";
-import { json, text } from "../lib/http.ts";
+import { json } from "../lib/http.ts";
 
 const RDAP_ENDPOINT = "https://rdap.org/domain/";
 
@@ -34,7 +34,7 @@ export async function lookupWhois(domain: string): Promise<WhoisData> {
 /** GET /whois/{domain}: raw RDAP data for the registrable domain. */
 export async function whois(ctx: RequestContext): Promise<Response> {
   const domain = targetAfter(ctx, "/whois");
-  if (!domain) return text("Usage: curl ${url.origin}/whois/<DOMAIN>\n", 400);
+  if (!domain) return usage(ctx, "/whois/<DOMAIN>");
 
   const start = Date.now();
   const res = await fetchRdap(domain);

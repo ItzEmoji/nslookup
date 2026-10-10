@@ -1,5 +1,5 @@
-import { type RequestContext, targetAfter } from "../context.ts";
-import { json, text } from "../lib/http.ts";
+import { type RequestContext, targetAfter, usage } from "../context.ts";
+import { json } from "../lib/http.ts";
 
 type Provider = "certspotter" | "crt.sh";
 
@@ -32,8 +32,7 @@ export function parseCertificateList(body: string, provider: Provider): unknown 
 /** GET /ssl/{domain}: certificate issuance history (`?provider=certspotter|crt.sh`). */
 export async function ssl(ctx: RequestContext): Promise<Response> {
   const domain = targetAfter(ctx, "/ssl");
-  if (!domain)
-    return text("Usage: curl ${url.origin}/ssl/<DOMAIN>?provider=certspotter|crt.sh\n", 400);
+  if (!domain) return usage(ctx, "/ssl/<DOMAIN>?provider=certspotter|crt.sh");
 
   const provider: Provider =
     ctx.url.searchParams.get("provider") === "crt.sh" ? "crt.sh" : "certspotter";

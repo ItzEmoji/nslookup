@@ -46,6 +46,7 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
+        "noTemplateCurlyInString": "error",
         "noConsole": { "level": "error", "options": { "allow": ["error", "warn"] } }
       }
     }
