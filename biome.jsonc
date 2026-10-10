@@ -1,0 +1,77 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "includes": ["**", "!!**/dist", "!!**/.wrangler"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "html": {
+    // Page templates are served byte-for-byte; don't let the formatter touch them.
+    "formatter": { "enabled": false }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error"
+      },
+      "style": {
+        "noParameterAssign": "error",
+        "useConst": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "useNodejsImportProtocol": "error",
+        "noNonNullAssertion": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": { "level": "error", "options": { "allow": ["error", "warn"] } }
+      }
+    }
+  },
+  "overrides": [
+    {
+      // The web app and page templates predate these rules. The script's
+      // functions are called from inline `onclick=` handlers Biome can't see
+      // (so "unused" is a false positive), and the remaining findings need a
+      // rewrite of the UI rather than a mechanical fix. JS and CSS are still
+      // formatted.
+      "includes": ["src/pages/**/*.js", "src/pages/**/*.css", "src/pages/**/*.html"],
+      "linter": { "enabled": false }
+    },
+    {
+      // Build scripts report progress on stdout.
+      "includes": ["scripts/**"],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    }
+  ],
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}
