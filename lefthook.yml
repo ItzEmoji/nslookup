@@ -1,0 +1,23 @@
+# Git hooks, installed by `bun install` (the `prepare` script).
+# CI runs the same checks, so skipping a hook only delays the failure.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{js,ts,json,jsonc,css}"
+      run: bunx biome check --write --error-on-warnings --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    - name: typecheck
+      glob: "*.ts"
+      run: bun run typecheck
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: bunx commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: test
+      run: bun test
