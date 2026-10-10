@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lookup &middot; Domain / IP</title>
+<meta name="description" content="Advanced DNS lookup tool with multi-resolver consensus, security analysis, and IP geolocation.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<!-- inline:styles.css -->
+</head>
+
+<body>
+
+<!-- Scroll Top -->
+<button id="scrollTopBtn" class="scroll-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to top">
+  <span class="material-symbols-rounded">arrow_upward</span>
+</button>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- IP Modal -->
+<div id="ipModal" class="modal-overlay hidden" onclick="if(event.target===this) closeModal('ipModal')">
+  <div class="modal">
+    <div class="modal-close" onclick="closeModal('ipModal')">&times;</div>
+    <h2 id="modalTitle">IP Info</h2>
+    <div id="modalDetails" class="small" style="line-height: 1.6; font-size: 15px;">Loading...</div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div id="helpModal" class="modal-overlay hidden" onclick="if(event.target===this) closeModal('helpModal')">
+  <div class="modal" style="max-width: 400px;">
+    <div class="modal-close" onclick="closeModal('helpModal')">&times;</div>
+    <h2>Keyboard Shortcuts</h2>
+    <div class="modal-detail-grid" style="margin-top: 16px;">
+      <span class="label"><kbd>Ctrl</kbd> + <kbd>K</kbd></span><span class="value">Search</span>
+      <span class="label"><kbd>Ctrl</kbd> + <kbd>,</kbd></span><span class="value">Settings</span>
+      <span class="label"><kbd>Enter</kbd></span><span class="value">Run Lookup</span>
+      <span class="label"><kbd>Esc</kbd></span><span class="value">Close</span>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Drawer -->
+<div id="settingsOverlay" class="settings-overlay hidden" onclick="closeSettings()"></div>
+<div id="settingsDrawer" class="settings-drawer hidden">
+  <div class="settings-header">
+    <h2>Settings</h2>
+    <button class="icon-btn no-rotate" onclick="closeSettings()" title="Close" style="border-radius:var(--md-sys-shape-corner-medium);">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  </div>
+  <div class="settings-body">
+
+    <!-- APPEARANCE -->
+    <div class="settings-section">
+      <div class="settings-section-title">Appearance</div>
+
+      <div class="font-presets" id="themePresets" style="margin-bottom: 8px;">
+        <div class="font-preset-tag" data-theme="blue" onclick="applyTheme('blue')">Blue</div>
+        <div class="font-preset-tag" data-theme="green" onclick="applyTheme('green')">Green</div>
+        <div class="font-preset-tag" data-theme="purple" onclick="applyTheme('purple')">Purple</div>
+        <div class="font-preset-tag" data-theme="red" onclick="applyTheme('red')">Red</div>
+        <div class="font-preset-tag" data-theme="orange" onclick="applyTheme('orange')">Orange</div>
+        <div class="font-preset-tag" data-theme="custom" onclick="applyTheme('custom')">Custom</div>
+      </div>
+
+      <div id="customThemeEditor" class="theme-editor hidden">
+        <div class="color-picker-group"><input type="color" id="cAccent" oninput="updateCustomTheme()" onchange="updateCustomTheme()"> <span class="small">Accent Color</span></div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <span class="small" style="display:block; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Typography</span>
+        <div class="font-presets" id="fontPresets">
+          <div class="font-preset-tag active" data-font="Roboto" style="font-family: 'Roboto', sans-serif;" onclick="applyFont('Roboto')">Roboto</div>
+          <div class="font-preset-tag" data-font="JetBrains Mono" style="font-family: 'JetBrains Mono', monospace;" onclick="applyFont('JetBrains Mono')">JetBrains</div>
+          <div class="font-preset-tag" data-font="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;" onclick="applyFont('Space Grotesk')">Space Grotesk</div>
+          <div class="font-preset-tag" data-font="Outfit" style="font-family: 'Outfit', sans-serif;" onclick="applyFont('Outfit')">Outfit</div>
+          <div class="font-preset-tag" data-font="Fira Code" style="font-family: 'Fira Code', monospace;" onclick="applyFont('Fira Code')">Fira Code</div>
+        </div>
+        <input type="text" class="settings-input" id="customFontInput" placeholder="Or type any Google Font (e.g. Roboto)" onchange="applyFont(this.value)">
+      </div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="settings-section">
+      <div class="settings-section-title">Features & Advanced</div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Enable Animations</strong>
+          <span>Smooth transitions and fading effects</span>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setAnimations" onchange="toggleSetting('features','animations',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Enable WHOIS / RDAP</strong>
+          <span>Query registry data for domains</span>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setWhois" onchange="toggleSetting('features','enableWhois',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Security Analysis</strong>
+          <span>Detect SPF, DMARC, DKIM, CAA records</span>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setSecurity" onchange="toggleSetting('features','enableSecurity',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>SSL Certificates</strong>
+          <span>Fetch SSL Certificate data</span>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setSsl" onchange="toggleSetting('features','enableSsl',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">RDAP Server URL</span>
+        <input type="text" class="settings-input" id="setRdapServer" onchange="updateSettingText('advanced','rdapServer',this.value)" placeholder="https://rdap.org/domain/">
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">Resolver Timeout (ms)</span>
+        <input type="number" class="settings-input" id="setTimeout" onchange="updateSettingText('advanced','timeout',parseInt(this.value))" placeholder="5000">
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">SSL Provider</span>
+        <select class="settings-input" id="setSslProvider" onchange="updateSettingText('advanced','sslProvider',this.value)">
+          <option value="certspotter">CertSpotter</option>
+          <option value="crt.sh">crt.sh</option>
+        </select>
+      </div>
+      <div style="margin-top: 12px;">
+        <span class="small" style="display:block; margin-bottom: 6px;">SecurityTrails API Key (History)</span>
+        <input type="text" class="settings-input" id="setHistoryKey" onchange="updateSettingText('advanced','historyKey',this.value)" placeholder="Enter key...">
+      </div>
+    </div>
+
+    <!-- DEFAULT RECORDS -->
+    <div class="settings-section">
+      <div class="settings-section-title">Default Query Records</div>
+      <span style="display:block; margin-bottom: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted);">Click to toggle which records are queried.</span>
+      <div id="recordCheckboxes" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+    </div>
+
+    <!-- RESOLVERS -->
+    <div class="settings-section">
+      <div class="settings-section-title">Resolvers</div>
+      <div id="resolverList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+        <div style="font-size:12px; font-weight:600; margin-bottom:8px;">Add New Resolver</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <input type="text" class="settings-input" id="newResName" placeholder="Resolver Name">
+          <textarea class="settings-input" id="newResUrl" rows="2" style="resize:vertical; font-family:var(--font-mono); font-size:12px;" placeholder="https://..."></textarea>
+          <div style="display:flex; justify-content:flex-end;">
+            <button onclick="addResolver()">Add Resolver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HELP & DOCS -->
+    <div class="settings-section">
+      <div class="settings-section-title">Documentation & Help</div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>CLI Reference & Help</strong>
+          <span>View terminal usage and man page</span>
+        </div>
+        <button onclick="window.location.href='/help'">View</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>API Documentation</strong>
+          <span>View developer endpoints</span>
+        </div>
+        <button onclick="window.location.href='/api-docs'">View</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Keybindings</strong>
+          <span>Keyboard shortcuts and hotkeys</span>
+        </div>
+        <button onclick="document.getElementById('helpModal').classList.remove('hidden')">View</button>
+      </div>
+    </div>
+
+    <!-- DATA MANAGEMENT -->
+    <div class="settings-section">
+      <div class="settings-section-title">Settings Management</div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Export Settings</strong>
+          <span>Save your configuration</span>
+        </div>
+        <button onclick="exportSettings()">Export</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">
+          <strong>Import Settings</strong>
+          <span>Load a configuration</span>
+        </div>
+        <button onclick="document.getElementById('importFile').click()">Import</button>
+        <input type="file" id="importFile" class="hidden" accept=".json" onchange="importSettings(event)">
+      </div>
+    </div>
+    
+    <!-- DANGER ZONE -->
+    <div class="settings-section" style="border-bottom:none; border-top: 1px solid rgba(255, 97, 136, 0.2); background: rgba(255, 97, 136, 0.05); margin: 0 -28px -40px -28px; padding: 24px 28px;">
+      <div class="settings-section-title" style="color: #ff6188; display:flex; align-items:center; gap:8px;">
+        <span class="material-symbols-rounded" style="font-size:16px">warning</span> 
+        DANGER ZONE
+      </div>
+      <div class="setting-row" style="border-color: rgba(255, 97, 136, 0.3);">
+        <div class="setting-label">
+          <strong style="color: #ffb4b4;">Clear History</strong>
+          <span>Delete all recent lookups</span>
+        </div>
+        <button class="btn-danger" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="setting-row" style="border-color: rgba(255, 97, 136, 0.3);">
+        <div class="setting-label">
+          <strong style="color: #ffb4b4;">Factory Reset</strong>
+          <span>Reset all settings to default</span>
+        </div>
+        <button class="btn-danger" onclick="resetSettings()">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HOME PAGE ===== -->
+<div class="home" id="homePage">
+  <div class="corner-actions">
+    <button class="icon-btn" onclick="openSettings()" title="Settings (Ctrl+,)">
+      <span class="material-symbols-rounded">settings</span>
+    </button>
+  </div>
+
+  <div class="container">
+    <h1>lookup</h1>
+    <div style="position:relative; width:100%;">
+      <input id="domainHome" class="search" placeholder="google.com or 8.8.8.8" autocomplete="off" spellcheck="false" onkeydown="handleEnter(event, 'domainHome')" oninput="handleAutocomplete(event, 'homeDropdown')" />
+      <div id="homeDropdown" class="autocomplete-dropdown"></div>
+    </div>
+    <div class="toolbar">
+      <button onclick="triggerLookup('domainHome')">Lookup Data</button>
+    </div>
+
+
+
+    <div id="historySection" class="history-section hidden">
+      <div class="history-label">Recent Lookups</div>
+      <div id="historyChips" class="history-chips"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RESULTS PAGE ===== -->
+<div id="resultsPage" class="results-page">
+  <div class="topbar-wrapper">
+    <div class="topbar">
+      <div style="position:relative; flex:1; width:100%;">
+        <input id="domainTop" class="search" autocomplete="off" spellcheck="false" onkeydown="handleEnter(event, 'domainTop')" placeholder="google.com or 8.8.8.8" oninput="handleAutocomplete(event, 'topDropdown')" />
+        <div id="topDropdown" class="autocomplete-dropdown"></div>
+      </div>
+      <div class="toolbar">
+        <button onclick="triggerLookup('domainTop')">Lookup</button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings">
+          <span class="material-symbols-rounded">settings</span>
+        </button>
+        <button class="icon-btn no-rotate" onclick="exportResultJSON()" title="Export JSON">
+          <span class="material-symbols-rounded">download</span>
+        </button>
+        <button class="icon-btn no-rotate" onclick="goHome()" title="Home">
+          <span class="material-symbols-rounded">home</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="hidden">
+    <div class="loader-container">
+      <div class="loader-dot"></div>
+      <div class="loader-text">Querying servers...</div>
+    </div>
+    <div class="skeleton-area">
+      <div class="skeleton-card"><div class="skeleton-line h-20 w-40"></div><div class="skeleton-line w-80"></div><div class="skeleton-line w-60"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line h-20 w-40"></div><div class="skeleton-line w-60"></div><div class="skeleton-line w-80"></div></div>
+    </div>
+  </div>
+
+  <div id="results" class="results"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<!-- inline:app.js -->
+</body>
+</html>

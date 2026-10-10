@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nslookup API Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<script>
+  try {
+    const s = JSON.parse(localStorage.getItem('lookup_settings'));
+    const t = s?.theme;
+    const themes = {
+      blue: { p:'#A8C7FA', op:'#062E6F', pc:'#17468D', opc:'#D3E3FD' },
+      green: { p:'#93D5A5', op:'#073816', pc:'#0F5223', opc:'#B6ECC3' },
+      purple: { p:'#D0BCFF', op:'#381E72', pc:'#4D2C87', opc:'#E8DEF8' },
+      red: { p:'#FFB4AB', op:'#690005', pc:'#8C1D18', opc:'#FFDAD6' },
+      orange: { p:'#FFB951', op:'#452B00', pc:'#825500', opc:'#FFDDB3' }
+    };
+    const c = t === 'custom' ? { p: s.customTheme.accent, op: '#131316', pc: s.customTheme.accent, opc: '#E4E1E6' } : themes[t || 'blue'];
+    if(c) {
+      document.documentElement.style.setProperty('--primary', c.p);
+      document.documentElement.style.setProperty('--on-primary', c.op);
+      document.documentElement.style.setProperty('--primary-container', c.pc);
+      document.documentElement.style.setProperty('--on-primary-container', c.opc);
+    }
+  } catch(e) {}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#131316;--surface-container:#201F23;--surface-container-high:#2A2A2D;
+  --surface-container-highest:#353538;--surface-container-low:#1B1B1F;--surface-container-lowest:#0E0E11;
+  --primary:#A8C7FA;--on-primary:#062E6F;--primary-container:#17468D;--on-primary-container:#D3E3FD;
+  --on-surface:#E4E1E6;--on-surface-variant:#C7C5D0;--outline:#918F9A;--outline-variant:#46464F;
+  --inverse-surface:#E4E1E6;--inverse-on-surface:#313034;
+  --error:#FFB4AB;--success:#6DD58C;
+}
+body{background:var(--surface);color:var(--on-surface);font-family:'Roboto',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(19,19,22,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--outline-variant);padding:0 24px;height:64px;display:flex;align-items:center;gap:24px}
+.topbar-logo{font-size:22px;font-weight:700;color:var(--primary);letter-spacing:-0.5px}
+.topbar-nav{display:flex;gap:8px;margin-left:auto}
+.topbar-nav a{padding:8px 16px;border-radius:9999px;font-size:14px;font-weight:500;color:var(--on-surface-variant);transition:background 200ms}
+.topbar-nav a:hover{background:rgba(168,199,250,0.08);text-decoration:none;color:var(--on-surface)}
+.topbar-nav a.active{background:var(--primary-container);color:var(--on-primary-container)}
+.layout{display:flex;min-height:calc(100vh - 64px)}
+.sidenav{width:260px;flex-shrink:0;border-right:1px solid var(--outline-variant);padding:16px 12px;position:sticky;top:64px;height:calc(100vh - 64px);overflow-y:auto}
+.sidenav-title{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--outline);font-weight:700;padding:8px 16px;margin-bottom:4px}
+.sidenav a{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:9999px;font-size:14px;font-weight:400;color:var(--on-surface-variant);transition:all 200ms;margin-bottom:2px}
+.sidenav a:hover{background:rgba(168,199,250,0.08);color:var(--on-surface);text-decoration:none}
+.sidenav a .method{font-size:11px;font-weight:500;font-family:'JetBrains Mono',monospace;color:var(--primary);background:rgba(168,199,250,0.1);padding:2px 8px;border-radius:6px;flex-shrink:0}
+.sidenav a .path{font-family:'JetBrains Mono',monospace;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.main{flex:1;padding:32px 40px 80px;max-width:900px}
+.main h1{font-size:32px;font-weight:400;margin-bottom:8px}
+.main .subtitle{font-size:14px;color:var(--on-surface-variant);margin-bottom:40px;letter-spacing:0.25px}
+.endpoint-card{background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:16px;padding:24px;margin-bottom:24px}
+.endpoint-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.method-badge{background:rgba(168,199,250,0.12);color:var(--primary);padding:4px 12px;border-radius:8px;font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.endpoint-path{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:500}
+.endpoint-desc{font-size:14px;color:var(--on-surface-variant);margin-bottom:20px;letter-spacing:0.25px}
+.code-block{position:relative;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);overflow-x:auto;letter-spacing:0.5px}
+.code-block .copy-btn{position:absolute;top:8px;right:8px;background:var(--surface-container-high);border:none;color:var(--on-surface-variant);padding:6px 12px;border-radius:9999px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Roboto',sans-serif;transition:all 200ms}
+.code-block .copy-btn:hover{background:var(--surface-container-highest);color:var(--on-surface)}
+.try-section{background:var(--surface-container);border-radius:12px;padding:20px;border:1px solid var(--outline-variant);margin-bottom:16px}
+.param-row{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.param-row:last-child{margin-bottom:0}
+.param-row label{font-size:11px;font-weight:700;color:var(--outline);text-transform:uppercase;letter-spacing:1.5px}
+.param-input{width:100%;padding:10px 16px;background:var(--surface-container-high);border:1px solid var(--outline-variant);border-radius:12px;color:var(--on-surface);font-size:14px;font-family:'Roboto',sans-serif;outline:none;transition:border-color 200ms}
+.param-input:focus{border-color:var(--primary)}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex}
+.chip input{display:none}
+.chip span{display:inline-flex;align-items:center;justify-content:center;padding:0 16px;height:32px;border-radius:8px;border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-variant);font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;cursor:pointer;transition:all 200ms;user-select:none}
+.chip span:hover{background:rgba(168,199,250,0.08)}
+.chip input:checked + span{border-color:var(--primary);color:var(--primary);background:rgba(168,199,250,0.05)}
+.toggle-switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--surface-container-highest);transition:.3s;border-radius:16px;border:2px solid var(--outline)}
+.toggle-slider:before{position:absolute;content:"";height:12px;width:12px;left:4px;bottom:4px;background-color:var(--outline);transition:.3s;border-radius:50%}
+.toggle-switch input:checked + .toggle-slider{background-color:var(--primary);border-color:var(--primary)}
+.toggle-switch input:checked + .toggle-slider:before{transform:translateX(20px);background-color:var(--on-primary)}
+.try-btn{padding:0 24px;height:40px;background:var(--primary);color:var(--on-primary);border:none;border-radius:9999px;font-size:14px;font-weight:500;cursor:pointer;font-family:'Roboto',sans-serif;transition:opacity 200ms}
+.try-btn:hover{opacity:0.88}
+.try-response{margin-top:16px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:12px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-surface-variant);max-height:400px;overflow:auto;white-space:pre-wrap;display:none}
+.try-response.show{display:block}
+.hamburger{display:none;background:none;border:none;color:var(--on-surface);cursor:pointer;padding:8px}
+.hamburger .material-symbols-rounded{font-size:24px}
+@media(max-width:768px){
+  .sidenav{position:fixed;left:-280px;top:64px;bottom:0;z-index:200;background:var(--surface-container-low);transition:left 300ms;box-shadow:4px 0 24px rgba(0,0,0,0.3);border-radius:0 16px 16px 0}
+  .sidenav.open{left:0}
+  .hamburger{display:block}
+  .main{padding:24px 16px 80px}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.32);z-index:199}
+  .overlay.show{display:block}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="document.querySelector('.sidenav').classList.toggle('open');document.querySelector('.overlay').classList.toggle('show')"><span class="material-symbols-rounded">menu</span></button>
+  <span class="topbar-logo">lookup</span>
+  <nav class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/api-docs" class="active">API Docs</a>
+    <a href="/help">Help</a>
+  </nav>
+</div>
+<div class="overlay" onclick="document.querySelector('.sidenav').classList.remove('open');this.classList.remove('show')"></div>
+<div class="layout">
+<aside class="sidenav">
+  <div class="sidenav-title">Endpoints</div>
+  <a href="#lookup"><span class="method">GET</span><span class="path">/{domain}</span></a>
+  <a href="#ip"><span class="method">GET</span><span class="path">/ip/{domain}</span></a>
+  <a href="#ipv4"><span class="method">GET</span><span class="path">/ipv4/{domain}</span></a>
+  <a href="#ipv6"><span class="method">GET</span><span class="path">/ipv6/{domain}</span></a>
+  <a href="#whois"><span class="method">GET</span><span class="path">/whois/{domain}</span></a>
+  <a href="#abuse"><span class="method">GET</span><span class="path">/abuse/{domain}</span></a>
+  <a href="#propagated"><span class="method">GET</span><span class="path">/propagated/{domain}</span></a>
+  <a href="#ssl"><span class="method">GET</span><span class="path">/ssl/{domain}</span></a>
+  <a href="#security"><span class="method">GET</span><span class="path">/security/{domain}</span></a>
+  <a href="#myip"><span class="method">GET</span><span class="path">/</span></a>
+</aside>
+<div class="main">
+  <h1>API Reference</h1>
+  <p class="subtitle">An advanced, interactive playground to test and integrate nslookup endpoints.</p>
+
+  <!-- LOOKUP ENDPOINT -->
+  <div class="endpoint-card" id="lookup">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/{domain}</span></div>
+    <p class="endpoint-desc">Full DNS + WHOIS lookup. Returns all DNS records and optional WHOIS/RDAP data in a single JSON response.</p>
+    
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="lookup-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>Record Types (type)</label>
+        <div class="checkbox-group" id="lookup-types" onchange="updateAll()">
+          <label class="chip"><input type="checkbox" value="A"><span>A</span></label>
+          <label class="chip"><input type="checkbox" value="AAAA"><span>AAAA</span></label>
+          <label class="chip"><input type="checkbox" value="CAA"><span>CAA</span></label>
+          <label class="chip"><input type="checkbox" value="CERT"><span>CERT</span></label>
+          <label class="chip"><input type="checkbox" value="CNAME"><span>CNAME</span></label>
+          <label class="chip"><input type="checkbox" value="DNSKEY"><span>DNSKEY</span></label>
+          <label class="chip"><input type="checkbox" value="DS"><span>DS</span></label>
+          <label class="chip"><input type="checkbox" value="HTTPS"><span>HTTPS</span></label>
+          <label class="chip"><input type="checkbox" value="LOC"><span>LOC</span></label>
+          <label class="chip"><input type="checkbox" value="MX"><span>MX</span></label>
+          <label class="chip"><input type="checkbox" value="NAPTR"><span>NAPTR</span></label>
+          <label class="chip"><input type="checkbox" value="NS"><span>NS</span></label>
+          <label class="chip"><input type="checkbox" value="PTR"><span>PTR</span></label>
+          <label class="chip"><input type="checkbox" value="SMIMEA"><span>SMIMEA</span></label>
+          <label class="chip"><input type="checkbox" value="SOA"><span>SOA</span></label>
+          <label class="chip"><input type="checkbox" value="SRV"><span>SRV</span></label>
+          <label class="chip"><input type="checkbox" value="SSHFP"><span>SSHFP</span></label>
+          <label class="chip"><input type="checkbox" value="SVCB"><span>SVCB</span></label>
+          <label class="chip"><input type="checkbox" value="TLSA"><span>TLSA</span></label>
+          <label class="chip"><input type="checkbox" value="TXT"><span>TXT</span></label>
+          <label class="chip"><input type="checkbox" value="URI"><span>URI</span></label>
+          <label class="chip"><input type="checkbox" value="ALL"><span>ALL</span></label>
+        </div>
+      </div>
+      <div class="param-row" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <label style="margin:0;">Include WHOIS (whois)</label>
+        <label class="toggle-switch"><input type="checkbox" id="lookup-whois" checked onchange="updateAll()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="param-row">
+        <label>Custom Resolvers (resolvers)</label>
+        <input class="param-input" placeholder="e.g. https://cloudflare-dns.com/dns-query" id="lookup-resolvers" oninput="updateAll()">
+      </div>
+    </div>
+    
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-lookup" style="white-space:pre-wrap; word-break:break-all;"></code>
+      <button class="copy-btn" onclick="copyCurl('lookup')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('lookup')">Send Request</button></div>
+    <pre class="try-response" id="res-lookup"></pre>
+  </div>
+
+  <!-- IP ENDPOINT -->
+  <div class="endpoint-card" id="ip">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/ip/{domain}</span></div>
+    <p class="endpoint-desc">Get IPv4 and IPv6 addresses as JSON.</p>
+    
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="ip-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <label style="margin:0;">Include IPv4 (ipv4)</label>
+        <label class="toggle-switch"><input type="checkbox" id="ip-ipv4" checked onchange="updateAll()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="param-row" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <label style="margin:0;">Include IPv6 (ipv6)</label>
+        <label class="toggle-switch"><input type="checkbox" id="ip-ipv6" checked onchange="updateAll()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-ip"></code>
+      <button class="copy-btn" onclick="copyCurl('ip')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('ip')">Send Request</button></div>
+    <pre class="try-response" id="res-ip"></pre>
+  </div>
+
+  <!-- IPV4 ENDPOINT -->
+  <div class="endpoint-card" id="ipv4">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/ipv4/{domain}</span></div>
+    <p class="endpoint-desc">Get raw IPv4 address as plain text. Perfect for scripting.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="ipv4-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-ipv4"></code>
+      <button class="copy-btn" onclick="copyCurl('ipv4')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('ipv4', 'text/plain')">Send Request</button></div>
+    <pre class="try-response" id="res-ipv4"></pre>
+  </div>
+
+  <!-- IPV6 ENDPOINT -->
+  <div class="endpoint-card" id="ipv6">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/ipv6/{domain}</span></div>
+    <p class="endpoint-desc">Get raw IPv6 address as plain text.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="ipv6-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-ipv6"></code>
+      <button class="copy-btn" onclick="copyCurl('ipv6')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('ipv6', 'text/plain')">Send Request</button></div>
+    <pre class="try-response" id="res-ipv6"></pre>
+  </div>
+
+  <!-- WHOIS ENDPOINT -->
+  <div class="endpoint-card" id="whois">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/whois/{domain}</span></div>
+    <p class="endpoint-desc">Get WHOIS / RDAP data as JSON.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="whois-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-whois"></code>
+      <button class="copy-btn" onclick="copyCurl('whois')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('whois')">Send Request</button></div>
+    <pre class="try-response" id="res-whois"></pre>
+  </div>
+
+  <!-- ABUSE ENDPOINT -->
+  <div class="endpoint-card" id="abuse">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/abuse/{domain}</span></div>
+    <p class="endpoint-desc">Check if a domain or IP is blacklisted on Spamhaus. Returns true or false.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain or IP</label>
+        <input class="param-input" placeholder="e.g. google.com" id="abuse-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>Custom Resolver (resolver)</label>
+        <input class="param-input" placeholder="e.g. 1.1.1.1" id="abuse-resolver" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-abuse"></code>
+      <button class="copy-btn" onclick="copyCurl('abuse')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('abuse')">Send Request</button></div>
+    <pre class="try-response" id="res-abuse"></pre>
+  </div>
+
+  <!-- PROPAGATED ENDPOINT -->
+  <div class="endpoint-card" id="propagated">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/propagated/{domain}</span></div>
+    <p class="endpoint-desc">Check if DNS records have propagated across resolvers. Returns true or false.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="propagated-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-propagated"></code>
+      <button class="copy-btn" onclick="copyCurl('propagated')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('propagated')">Send Request</button></div>
+    <pre class="try-response" id="res-propagated"></pre>
+  </div>
+
+  <!-- SSL ENDPOINT -->
+  <div class="endpoint-card" id="ssl">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/ssl/{domain}</span></div>
+    <p class="endpoint-desc">Returns SSL certificate history for the domain.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="ssl-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>Provider</label>
+        <select class="param-input" id="ssl-provider" onchange="updateAll()">
+          <option value="certspotter">CertSpotter</option>
+          <option value="crt.sh">crt.sh</option>
+        </select>
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-ssl"></code>
+      <button class="copy-btn" onclick="copyCurl('ssl')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('ssl')">Send Request</button></div>
+    <pre class="try-response" id="res-ssl"></pre>
+  </div>
+
+  <!-- SECURITY ENDPOINT -->
+  <div class="endpoint-card" id="security">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/security/{domain}</span></div>
+    <p class="endpoint-desc">Returns security analysis including SPF, DMARC, and CAA presence.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="security-domain" value="google.com" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-security"></code>
+      <button class="copy-btn" onclick="copyCurl('security')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('security')">Send Request</button></div>
+    <pre class="try-response" id="res-security"></pre>
+  </div>
+
+  <!-- HISTORY ENDPOINT -->
+  <div class="endpoint-card" id="history">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/history/{domain}</span></div>
+    <p class="endpoint-desc">Returns historical DNS A records from SecurityTrails.</p>
+    <div class="try-section">
+      <div class="param-row">
+        <label>Domain</label>
+        <input class="param-input" placeholder="e.g. google.com" id="history-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>API Key</label>
+        <input class="param-input" placeholder="SecurityTrails API Key" id="history-apikey" value="" oninput="updateAll()">
+      </div>
+    </div>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-history"></code>
+      <button class="copy-btn" onclick="copyCurl('history')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('history')">Send Request</button></div>
+    <pre class="try-response" id="res-history"></pre>
+  </div>
+
+  <!-- MY IP ENDPOINT -->
+  <div class="endpoint-card" id="myip">
+    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/</span></div>
+    <p class="endpoint-desc">Returns your own IP address as plain text.</p>
+    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
+      <code id="curl-myip"></code>
+      <button class="copy-btn" onclick="copyCurl('myip')">Copy</button>
+    </div>
+    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('myip', 'text/plain')">Send Request</button></div>
+    <pre class="try-response" id="res-myip"></pre>
+  </div>
+</div>
+</div>
+<script>
+const BASE_URL = '{{ORIGIN}}';
+
+function getUrl(id) {
+  if (id === 'myip') return BASE_URL + '/';
+  
+  let domain = document.getElementById(id + '-domain').value.trim();
+  if (!domain) domain = '{domain}';
+  
+  let path = '/' + domain;
+  if (id !== 'lookup') path = '/' + id + '/' + domain;
+  
+  const url = new URL(BASE_URL + path);
+  
+  if (id === 'lookup') {
+    const types = Array.from(document.querySelectorAll('#lookup-types input:checked')).map(el => el.value);
+    if (types.length > 0) url.searchParams.set('type', types.join(','));
+    const whois = document.getElementById('lookup-whois').checked;
+    if (!whois) url.searchParams.set('whois', 'false');
+    const resolvers = document.getElementById('lookup-resolvers').value.trim();
+    if (resolvers) url.searchParams.set('resolvers', resolvers);
+  } else if (id === 'ip') {
+    const ipv4 = document.getElementById('ip-ipv4').checked;
+    const ipv6 = document.getElementById('ip-ipv6').checked;
+    if (!ipv4) url.searchParams.set('ipv4', 'false');
+    if (!ipv6) url.searchParams.set('ipv6', 'false');
+  } else if (id === 'abuse') {
+    const res = document.getElementById('abuse-resolver').value.trim();
+    if (res) url.searchParams.set('resolver', res);
+  } else if (id === 'ssl') {
+    const provider = document.getElementById('ssl-provider').value;
+    if (provider !== 'certspotter') url.searchParams.set('provider', provider);
+  } else if (id === 'history') {
+    const key = document.getElementById('history-apikey').value.trim();
+    if (key) url.searchParams.set('apikey', key);
+  }
+  
+  // Return decoded URL string to make cURL look clean
+  return decodeURIComponent(url.toString());
+}
+
+function updateAll() {
+  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'history', 'myip'].forEach(id => {
+    document.getElementById('curl-' + id).textContent = 'curl "' + getUrl(id) + '"';
+  });
+}
+
+function copyCurl(id) {
+  navigator.clipboard.writeText(document.getElementById('curl-' + id).textContent);
+  const btn = event.target;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+
+function sendReq(id, acceptType = 'application/json') {
+  const resEl = document.getElementById('res-' + id);
+  const url = getUrl(id);
+  if (url.includes('{domain}')) {
+    resEl.textContent = 'Please enter a valid domain.';
+    resEl.classList.add('show');
+    return;
+  }
+  
+  resEl.textContent = 'Loading...';
+  resEl.classList.add('show');
+  
+  fetch(url, { headers: { accept: acceptType } })
+    .then(r => r.text())
+    .then(text => {
+      try { resEl.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+      catch(e) { resEl.textContent = text; }
+    })
+    .catch(e => resEl.textContent = 'Error: ' + e.message);
+}
+
+document.querySelectorAll('.sidenav a').forEach(a => {
+  a.addEventListener('click', function() {
+    document.querySelector('.sidenav').classList.remove('open');
+    document.querySelector('.overlay').classList.remove('show');
+  });
+});
+
+// Intersection Observer for sidebar highlighting
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll('.sidenav a').forEach(a => {
+        if (a.getAttribute('href') === '#' + entry.target.id) {
+          a.classList.add('active');
+        } else {
+          a.classList.remove('active');
+        }
+      });
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+document.querySelectorAll('.endpoint-card').forEach(card => observer.observe(card));
+
+// Init
+updateAll();
+</script>
+</body>
+</html>
