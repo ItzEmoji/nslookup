@@ -27,7 +27,7 @@ Success means the operator can find the cause, or rule one out, without opening 
 
 ## Operating Context
 
-- An official public instance exists alongside self-hosted deployments. Its URL is not recorded here yet.
+- An official public instance runs at https://lookup.itzemoji.com alongside self-hosted deployments.
 - The app is used next to a terminal. The CLI reference (`/help`, `/help.txt`) and an interactive API playground (`/api-docs`) are part of the product, and the examples on those pages use the deployment's own origin so they can be copied and pasted.
 - The app is keyboard-driven: Ctrl+K to search, Ctrl+, for settings, Enter to run a lookup, Esc to close.
 - Lookups can be shared and repeated: browser navigations are redirected to `/?domain=...`, and query history is kept in the browser.

@@ -3,11 +3,15 @@
 DNS, WHOIS and domain intelligence lookups, running as a Cloudflare Worker.
 The same URL serves a web app to browsers and JSON or plain text to `curl`.
 
+A public instance runs at [lookup.itzemoji.com](https://lookup.itzemoji.com):
+
 ```console
-$ curl https://<your-worker>/example.com          # every record, consensus, WHOIS
-$ curl https://<your-worker>/ipv4/example.com     # 93.184.215.14
-$ curl https://<your-worker>/help                 # full reference
+$ curl https://lookup.itzemoji.com/example.com          # every record, consensus, WHOIS
+$ curl https://lookup.itzemoji.com/ipv4/example.com     # 93.184.215.14
+$ curl https://lookup.itzemoji.com/help                 # full reference
 ```
+
+To run your own, deploy it to your Cloudflare account:
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/itzemoji/nslookup)
 
