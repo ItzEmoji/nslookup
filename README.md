@@ -27,10 +27,28 @@ $ curl https://<your-worker>/help                 # full reference
 | `GET /security/{domain}` | SPF, DMARC, DKIM and CAA posture. |
 | `GET /history/{domain}` | Historical A records via SecurityTrails (`?apikey=` or `X-API-Key`). |
 | `GET /help`, `/api-docs` | Reference and an interactive playground. |
+| `GET /openapi.json` | OpenAPI 3.1 description of every endpoint, with the deployment's own URL as its server. |
 
 Every API endpoint accepts `?resolvers=<url>,<url>` to query your own
 DNS-over-HTTPS resolvers instead of Cloudflare and Google, and `?preview` to
 pretty-print JSON.
+
+Browser page navigations get the web app; every other request gets the API,
+so HTTP libraries, Postman and generated clients work without extra headers.
+
+### OpenAPI
+
+Import `https://<your-worker>/openapi.json` into Postman, Insomnia or Bruno,
+or generate a client from it:
+
+```sh
+npx @openapitools/openapi-generator-cli generate \
+  -i https://<your-worker>/openapi.json -g typescript-fetch -o ./nslookup-client
+```
+
+The document lives in [`src/openapi.ts`](src/openapi.ts). `test/openapi.test.ts`
+calls every documented operation, so the spec fails CI when it drifts from the
+routes.
 
 ## Development
 

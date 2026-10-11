@@ -22,6 +22,7 @@ ENDPOINTS
     /ssl/<domain>           Returns certificate history from CertSpotter.
     /security/<domain>      Returns security analysis (SPF, DMARC, CAA).
     /history/<domain>       Returns historical DNS A records (Requires ?apikey=).
+    /openapi.json           OpenAPI 3.1 description, for Postman or client generators.
 
 SETTINGS & FEATURES
     - Privacy: No tracking, no logs.
@@ -32,3 +33,4 @@ EXAMPLES
     curl {{ORIGIN}}/example.com
     curl "{{ORIGIN}}/google.com?type=TXT"
     curl {{ORIGIN}}/ipv4/github.com
+    curl -o openapi.json {{ORIGIN}}/openapi.json

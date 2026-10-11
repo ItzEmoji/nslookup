@@ -1,5 +1,6 @@
 import { createContext, type RequestContext } from "./context.ts";
-import { reply } from "./lib/http.ts";
+import { json, reply } from "./lib/http.ts";
+import { openApiDocument } from "./openapi.ts";
 import { appPage } from "./pages/index.ts";
 import { abuse } from "./routes/abuse.ts";
 import { addresses, firstAddress } from "./routes/addresses.ts";
@@ -26,6 +27,9 @@ const API_ROUTES: Record<string, Handler> = {
   security,
   propagated,
 };
+
+/** Names of the `/{name}/{target}` API routes; test/openapi.test.ts checks each is documented. */
+export const API_ROUTE_NAMES = Object.keys(API_ROUTES);
 
 /** Paths the web app renders client-side; any other browser path is treated as a domain. */
 const APP_ROUTE = /^\/(ip|ipv4|ipv6|whois|abuse|propagated|ssl|security)(\/.*)?$/;
@@ -61,6 +65,8 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   if (pathname === "/help") return help(ctx);
   if (pathname === "/api-docs") return apiDocs(ctx);
+  // JSON for everyone, browsers included, so the link can be opened or imported as-is.
+  if (pathname === "/openapi.json") return json(openApiDocument(ctx.url.origin), { space: 2 });
   if (!ctx.wantsApi) return serveApp(ctx);
 
   if (pathname === "/proxy-dns") return proxyDns(ctx);
