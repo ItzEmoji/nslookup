@@ -82,3 +82,7 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 from [Conventional Commits](https://www.conventionalcommits.org/) on `main`.
 Merging a release pull request tags the version and publishes the GitHub
 release with the built bundle. See [CHANGELOG.md](CHANGELOG.md).
+
+## License
+This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html). For more information, see the [LICENSE.md](LICENSE.md) file. 
+
