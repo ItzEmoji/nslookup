@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nslookup",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-05-29",
+
+  // The worker is bundled by Bun (scripts/build.ts); wrangler ships that
+  // artifact as-is instead of re-bundling src/.
+  "no_bundle": true,
+  "upload_source_maps": true,
+
+  // `wrangler dev`, `deploy` and `preview` run the build first.
+  "build": {
+    "command": "bun run build",
+    "watch_dir": "src"
+  },
+
+  // Overrides for Preview deployments (`bun run preview`).
+  "previews": {
+    "vars": {
+      "ENVIRONMENT": "preview"
+    }
+  }
+}

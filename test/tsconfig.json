@@ -1,0 +1,12 @@
+{
+  // Tests and build scripts run under Bun, so they get Bun's types
+  // instead of the Workers runtime types used for src/.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["../src/**/*.ts", "./**/*.ts", "../scripts/**/*.ts", "../*.config.ts"],
+  // The entry point only wires the router into the Workers `ExportedHandler`
+  // type, which doesn't exist under Bun's types.
+  "exclude": ["../src/index.ts"]
+}

@@ -1,0 +1,36 @@
+nslookup API - Manual Page
+
+NAME
+    lookup - DNS and WHOIS lookup tool
+
+DESCRIPTION
+    lookup is an advanced, privacy-friendly DNS and WHOIS lookup service.
+    It resolves DNS records and WHOIS information from the terminal with
+    beautifully formatted JSON payloads.
+
+USAGE
+    curl {{ORIGIN}}/[endpoint]/<domain>
+
+ENDPOINTS
+    /                       Returns the IP address you are calling from.
+    /<domain>               Gets ALL DNS records + WHOIS data in one payload.
+    /<domain>?type=TXT,MX   Filters to just the specified DNS records.
+    /ip/<domain>            Returns JSON with IPv4 and IPv6 addresses.
+    /ipv4/<domain>          Returns just the raw IPv4 string.
+    /ipv6/<domain>          Returns just the raw IPv6 string.
+    /whois/<domain>         Returns pure JSON RDAP/WHOIS data.
+    /ssl/<domain>           Returns certificate history from CertSpotter.
+    /security/<domain>      SPF, DMARC and CAA records. ?dkim=<selector> adds DKIM keys.
+    /openapi.json           OpenAPI 3.1 description, for Postman or client generators.
+
+SETTINGS & FEATURES
+    - Privacy: No tracking, no logs.
+    - Resolvers: Queries Cloudflare and Google DNS in parallel.
+    - Customization: Web UI allows you to set default records and custom DNS resolvers.
+
+EXAMPLES
+    curl {{ORIGIN}}/example.com
+    curl "{{ORIGIN}}/google.com?type=TXT"
+    curl {{ORIGIN}}/ipv4/github.com
+    curl -o openapi.json {{ORIGIN}}/openapi.json
+    curl "{{ORIGIN}}/openapi.json?preview"

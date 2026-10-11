@@ -1,0 +1,34 @@
+{
+  "name": "nslookup",
+  "version": "0.0.0",
+  "description": "DNS, WHOIS and domain intelligence lookups as a Cloudflare Worker.",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "prepare": "lefthook install",
+    "dev": "wrangler dev",
+    "build": "bun scripts/build.ts",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler preview",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
+    "lint": "biome lint",
+    "format": "biome format --write",
+    "check": "biome check",
+    "fix": "biome check --write",
+    "verify": "biome ci --error-on-warnings && bun run typecheck && bun test && bun run build",
+    "clean": "rm -rf dist .wrangler"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@cloudflare/workers-types": "^5.20261010.1",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/types": "^21.2.3",
+    "@types/bun": "^1.4.2",
+    "lefthook": "^2.2.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.149.0"
+  }
+}

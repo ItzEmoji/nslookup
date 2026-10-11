@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nslookup CLI Help</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  try {
+    const s = JSON.parse(localStorage.getItem('lookup_settings'));
+    const t = s?.theme;
+    const themes = {
+      blue: { p:'#A8C7FA', op:'#062E6F', pc:'#17468D', opc:'#D3E3FD' },
+      green: { p:'#93D5A5', op:'#073816', pc:'#0F5223', opc:'#B6ECC3' },
+      purple: { p:'#D0BCFF', op:'#381E72', pc:'#4D2C87', opc:'#E8DEF8' },
+      red: { p:'#FFB4AB', op:'#690005', pc:'#8C1D18', opc:'#FFDAD6' },
+      orange: { p:'#FFB951', op:'#452B00', pc:'#825500', opc:'#FFDDB3' }
+    };
+    const c = t === 'custom' ? { p: s.customTheme.accent, op: '#131316', pc: s.customTheme.accent, opc: '#E4E1E6' } : themes[t || 'blue'];
+    if(c) {
+      document.documentElement.style.setProperty('--primary', c.p);
+      document.documentElement.style.setProperty('--on-primary', c.op);
+      document.documentElement.style.setProperty('--primary-container', c.pc);
+      document.documentElement.style.setProperty('--on-primary-container', c.opc);
+    }
+  } catch(e) {}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:#131316;--surface-container:#201F23;--surface-container-high:#2A2A2D;
+  --surface-container-highest:#353538;--surface-container-low:#1B1B1F;--surface-container-lowest:#0E0E11;
+  --primary:#A8C7FA;--on-primary:#062E6F;--primary-container:#17468D;--on-primary-container:#D3E3FD;
+  --on-surface:#E4E1E6;--on-surface-variant:#C7C5D0;--outline:#918F9A;--outline-variant:#46464F;
+  --inverse-surface:#E4E1E6;--inverse-on-surface:#313034;
+}
+body{background:var(--surface);color:var(--on-surface);font-family:'Roboto',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(19,19,22,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--outline-variant);padding:0 24px;height:64px;display:flex;align-items:center;gap:24px}
+.topbar-logo{font-size:22px;font-weight:700;color:var(--primary);letter-spacing:-0.5px}
+.topbar-nav{display:flex;gap:8px;margin-left:auto}
+.topbar-nav a{padding:8px 16px;border-radius:9999px;font-size:14px;font-weight:500;color:var(--on-surface-variant);transition:background 200ms}
+.topbar-nav a:hover{background:rgba(168,199,250,0.08);text-decoration:none;color:var(--on-surface)}
+.topbar-nav a.active{background:var(--primary-container);color:var(--on-primary-container)}
+.main{padding:40px;max-width:900px;margin:0 auto}
+.main h1{font-size:32px;font-weight:400;margin-bottom:8px}
+.main .subtitle{font-size:14px;color:var(--on-surface-variant);margin-bottom:40px;letter-spacing:0.25px}
+.endpoint-card{background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:16px;padding:24px;margin-bottom:24px}
+.method-badge{background:rgba(168,199,250,0.12);color:var(--primary);padding:4px 12px;border-radius:8px;font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace;margin-right:12px}
+.endpoint-title{font-size:18px;font-weight:500}
+.code-block{background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:12px;padding:14px 16px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);overflow-x:auto}
+.desc{font-size:14px;color:var(--on-surface-variant)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="topbar-logo">lookup</span>
+  <nav class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/api-docs">API Docs</a>
+    <a href="/help" class="active">CLI Help</a>
+    <a href="/openapi.json">OpenAPI</a>
+  </nav>
+</div>
+<div class="main">
+  <h1>CLI Reference</h1>
+  <p class="subtitle" style="margin-bottom: 24px;">Here is exactly what this API can do for you from your terminal—no fluff.</p>
+
+  <div class="endpoint-card" style="margin-bottom: 32px; border-color: var(--primary);">
+    <h2 style="font-size: 20px; font-weight: 500; margin-bottom: 12px; color: var(--primary);">About lookup</h2>
+    <p class="desc" style="margin-bottom: 16px;">lookup is an advanced, privacy-friendly DNS and WHOIS lookup service. It supports querying multiple DNS resolvers in parallel, filtering record types, and returning perfectly formatted JSON for scripts.</p>
+    <ul class="desc" style="margin-left: 20px; list-style-type: square; line-height: 1.8;">
+      <li><strong>Settings:</strong> Use the web UI to configure custom DNS resolvers, change the default records (A, AAAA, MX, etc.), and customize your theme.</li>
+      <li><strong>Privacy:</strong> Absolutely zero tracking or logging.</li>
+      <li><strong>Speed:</strong> Parallel DNS resolution via Edge Workers.</li>
+    </ul>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">Full Lookup</span></div>
+    <div class="code-block">curl {{ORIGIN}}/example.com</div>
+    <p class="desc">Gets DNS records and WHOIS data in one JSON payload.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">Specific Records</span></div>
+    <div class="code-block">curl "{{ORIGIN}}/example.com?type=TXT,MX"</div>
+    <p class="desc">Filters to just the DNS records you want.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">IP Addresses (JSON)</span></div>
+    <div class="code-block">curl {{ORIGIN}}/ip/example.com</div>
+    <p class="desc">Returns JSON with both IPv4 and IPv6 addresses.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">Raw IPv4</span></div>
+    <div class="code-block">curl {{ORIGIN}}/ipv4/example.com</div>
+    <p class="desc">Returns just the raw IPv4 string. Perfect for scripting.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">Raw IPv6</span></div>
+    <div class="code-block">curl {{ORIGIN}}/ipv6/example.com</div>
+    <p class="desc">Returns just the raw IPv6 string.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">WHOIS Only</span></div>
+    <div class="code-block">curl {{ORIGIN}}/whois/example.com</div>
+    <p class="desc">Returns pure JSON RDAP/WHOIS data.</p>
+  </div>
+
+  <div class="endpoint-card">
+    <div style="display:flex;align-items:center"><span class="method-badge">GET</span><span class="endpoint-title">Your Own IP</span></div>
+    <div class="code-block">curl {{ORIGIN}}/</div>
+    <p class="desc">Returns the IP address you are calling from.</p>
+  </div>
+</div>
+</body>
+</html>
