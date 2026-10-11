@@ -14,7 +14,7 @@ People who self-host their own deployment are a second audience. They use the sa
 
 ## Product Purpose
 
-nslookup answers "what does the internet currently believe about this domain or IP?" in a single lookup. It queries several DNS-over-HTTPS resolvers in parallel and reports where they agree, along with registry (WHOIS/RDAP), Spamhaus listing, SSL certificate history, email security (SPF, DMARC, DKIM, CAA) and historical A records.
+nslookup answers "what does the internet currently believe about this domain or IP?" in a single lookup. It queries several DNS-over-HTTPS resolvers in parallel and reports where they agree, along with registry (WHOIS/RDAP), Spamhaus listing, SSL certificate history and email security (SPF, DMARC, DKIM, CAA).
 
 Success means the operator can find the cause, or rule one out, without opening a second tool, and can reproduce what they saw from the command line.
 
@@ -22,7 +22,7 @@ Success means the operator can find the cause, or rule one out, without opening 
 
 - **One URL for browser and terminal.** The same address serves the web app to a browser and plain text or JSON to `curl`. What someone sees in the app can be repeated in a shell or a script.
 - **Multi-resolver consensus.** The app does not trust a single resolver. It shows per-type consensus and whether all resolvers agree (propagation).
-- **Everything in one lookup.** DNS, WHOIS/RDAP, abuse listing, SSL, email security posture and history are combined in one result.
+- **Everything in one lookup.** DNS, WHOIS/RDAP, abuse listing, SSL and email security posture are combined in one result.
 - **Self-hostable and stateless.** It is a single Cloudflare Worker with no storage and no tracking, deployable to your own account with one button. Resolvers can be swapped per request.
 
 ## Operating Context
@@ -34,8 +34,8 @@ Success means the operator can find the cause, or rule one out, without opening 
 
 ## Capabilities and Constraints
 
-- Endpoints: `/{domain}`, `/{ip}` (PTR), `/ip/`, `/ipv4/`, `/ipv6/`, `/whois/`, `/abuse/`, `/propagated/`, `/ssl/`, `/security/`, `/history/`, `/help`, `/api-docs`. Every API endpoint accepts `?resolvers=` and `?preview`.
-- Upstream services: Cloudflare and Google DoH by default (user-configurable), rdap.org by default, Spamhaus, CertSpotter or crt.sh, and SecurityTrails (needs the user's own API key).
+- Endpoints: `/{domain}`, `/{ip}` (PTR), `/ip/`, `/ipv4/`, `/ipv6/`, `/whois/`, `/abuse/`, `/propagated/`, `/ssl/`, `/security/`, `/help`, `/api-docs`, `/openapi.json`. Every API endpoint accepts `?resolvers=` and `?preview`.
+- Upstream services: Cloudflare and Google DoH by default (user-configurable), rdap.org by default, Spamhaus, and CertSpotter or crt.sh.
 - The web app supports theme and accent presets, font choice, feature toggles (WHOIS, security, SSL, animations), default record types, resolver management, a resolver timeout, and an IP info modal with a map.
 - Technical constraints: the app is plain HTML, CSS and browser JS in `src/pages/`, with no framework and no client build step. At build time the pages are inlined into a single `dist/worker.js`. Settings and history live only in `localStorage`, and there is no server-side state.
 - The app runs on whatever origin it is deployed to, so it must not hard-code a host.

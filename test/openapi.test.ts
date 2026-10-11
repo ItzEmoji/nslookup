@@ -14,7 +14,6 @@ interface Schema {
 }
 interface Operation {
   operationId: string;
-  security?: unknown[];
   responses: Record<string, { content?: Record<string, { schema: Schema }> }>;
 }
 
@@ -26,7 +25,6 @@ function mockUpstreams() {
   return mockFetch((url) => {
     if (url.hostname === "rdap.org") return Response.json({ ldhName: "EXAMPLE.COM" });
     if (url.hostname === "api.certspotter.com") return Response.json([{ dns_names: ["a.test"] }]);
-    if (url.hostname === "api.securitytrails.com") return Response.json({ records: [] });
     const name = url.searchParams.get("name") ?? "";
     if (name.includes("spamhaus")) return dohAnswer([]);
     return dohAnswer(["93.184.215.14"]);
@@ -84,9 +82,7 @@ describe("every documented operation", () => {
   test.each(operations)("$path answers as documented", async ({ path, operation }) => {
     mockUpstreams();
     const url = `${ORIGIN}${path.replace("{domain}", "example.com").replace("{target}", "example.com")}`;
-    const headers = operation.security?.length ? { ...CLIENT, "x-api-key": "test-key" } : CLIENT;
-
-    const res = await handleRequest(new Request(url, { headers }));
+    const res = await handleRequest(new Request(url, { headers: CLIENT }));
 
     expect(res.status).toBe(200);
     const content = operation.responses["200"]?.content ?? {};

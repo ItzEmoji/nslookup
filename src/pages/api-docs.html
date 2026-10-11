@@ -352,28 +352,6 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
     <pre class="try-response" id="res-security"></pre>
   </div>
 
-  <!-- HISTORY ENDPOINT -->
-  <div class="endpoint-card" id="history">
-    <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/history/{domain}</span></div>
-    <p class="endpoint-desc">Returns historical DNS A records from SecurityTrails.</p>
-    <div class="try-section">
-      <div class="param-row">
-        <label>Domain</label>
-        <input class="param-input" placeholder="e.g. google.com" id="history-domain" value="google.com" oninput="updateAll()">
-      </div>
-      <div class="param-row">
-        <label>API Key</label>
-        <input class="param-input" placeholder="SecurityTrails API Key" id="history-apikey" value="" oninput="updateAll()">
-      </div>
-    </div>
-    <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
-      <code id="curl-history"></code>
-      <button class="copy-btn" onclick="copyCurl('history')">Copy</button>
-    </div>
-    <div style="text-align: right;"><button class="try-btn" onclick="sendReq('history')">Send Request</button></div>
-    <pre class="try-response" id="res-history"></pre>
-  </div>
-
   <!-- MY IP ENDPOINT -->
   <div class="endpoint-card" id="myip">
     <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/</span></div>
@@ -422,9 +400,6 @@ function getUrl(id) {
   } else if (id === 'security') {
     const selectors = document.getElementById('security-dkim').value.trim();
     if (selectors) url.searchParams.set('dkim', selectors);
-  } else if (id === 'history') {
-    const key = document.getElementById('history-apikey').value.trim();
-    if (key) url.searchParams.set('apikey', key);
   }
   
   // Return decoded URL string to make cURL look clean
@@ -432,7 +407,7 @@ function getUrl(id) {
 }
 
 function updateAll() {
-  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'history', 'myip'].forEach(id => {
+  ['lookup', 'ip', 'ipv4', 'ipv6', 'whois', 'abuse', 'propagated', 'ssl', 'security', 'myip'].forEach(id => {
     document.getElementById('curl-' + id).textContent = 'curl "' + getUrl(id) + '"';
   });
 }

@@ -113,7 +113,6 @@ const defaultSettings = {
     rdapServer: "https://rdap.org/domain/",
     timeout: 5000,
     sslProvider: "certspotter",
-    historyKey: "",
   },
   defaultRecords: ["A", "AAAA", "MX", "TXT", "NS", "CNAME", "SOA"],
 };
@@ -263,9 +262,6 @@ function loadSettings() {
   if (document.getElementById("setSslProvider")) {
     document.getElementById("setSslProvider").value =
       userSettings.advanced.sslProvider || "certspotter";
-  }
-  if (document.getElementById("setHistoryKey")) {
-    document.getElementById("setHistoryKey").value = userSettings.advanced.historyKey || "";
   }
 
   applyTheme(userSettings.theme);
@@ -1015,7 +1011,6 @@ async function triggerLookup(inputId) {
     : Promise.resolve([]);
 
   let whoisPromise = null;
-  let historyPromise = null;
   let sslPromise = null;
 
   if (userSettings.features.enableSsl && !isReverseSearch && !isSubdomain(domain)) {
@@ -1036,14 +1031,6 @@ async function triggerLookup(inputId) {
       .catch((e) => ({ error: e.message }));
   } else {
     whoisPromise = Promise.resolve(null);
-  }
-
-  if (userSettings.advanced.historyKey && !isReverseSearch && !isSubdomain(domain)) {
-    historyPromise = fetch(
-      "/history/" + domain + "?apikey=" + encodeURIComponent(userSettings.advanced.historyKey),
-    )
-      .then((r) => (r.ok ? r.json() : { error: "HTTP " + r.status }))
-      .catch((e) => ({ error: e.message }));
   }
 
   const [allResults, dmarcResults] = await Promise.all([Promise.all(fetchPromises), dmarcPromise]);
@@ -1083,15 +1070,6 @@ async function triggerLookup(inputId) {
     });
   }
 
-  if (historyPromise) {
-    historyPromise.then((historyResult) => {
-      if (historyResult) {
-        latestData.history = historyResult;
-        renderHistoryCard(historyResult, domain);
-      }
-    });
-  }
-
   if (sslPromise) {
     sslPromise.then((sslResult) => {
       if (sslResult) {
@@ -1112,13 +1090,12 @@ function registeredDomain(domain) {
   return parts.slice(ccSld ? -3 : -2).join(".");
 }
 
-// WHOIS, SSL and history only run on registered domains. Say so instead of
+// WHOIS and SSL only run on registered domains. Say so instead of
 // leaving the operator to wonder whether they ran at all.
 function renderSkippedNotice(domain) {
   const skipped = [];
   if (userSettings.features.enableWhois) skipped.push("WHOIS");
   if (userSettings.features.enableSsl) skipped.push("certificates");
-  if (userSettings.advanced.historyKey) skipped.push("DNS history");
   if (!skipped.length) return;
   const parent = registeredDomain(domain);
   const list =
@@ -1521,47 +1498,6 @@ function renderWhoisCard(whoisData, domain) {
       '">Copy JSON</button></div>' +
       "<pre>" +
       esc(JSON.stringify(whoisData, null, 2)) +
-      "</pre></details>";
-  }
-  const card = document.createElement("div");
-  card.className = "card";
-  card.style.animationDelay = "0s";
-  card.innerHTML = html;
-  container.appendChild(card);
-}
-
-function renderHistoryCard(historyData, domain) {
-  if (!historyData || !userSettings.advanced.historyKey) return;
-  const container = document.getElementById("results");
-  if (!container) return;
-
-  let html =
-    '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">history</span></span> DNS History (A Records)</div></div>';
-  if (historyData.error || !historyData.records || historyData.records.length === 0) {
-    html +=
-      '<div class="small" style="color:var(--text-muted);">' +
-      esc(historyData.error || "No historical records found.") +
-      "</div>";
-  } else {
-    html += '<div class="whois-grid">';
-    let records = historyData.records.slice(0, 10); // Show max 10
-    for (const rec of records) {
-      let ip = rec.values ? rec.values.map((v) => v.ip).join(", ") : "Unknown";
-      let date = rec.first_seen ? new Date(rec.first_seen).toLocaleDateString() : "Unknown Date";
-      html +=
-        '<span class="wlabel">' + esc(date) + '</span><span class="wvalue">' + esc(ip) + "</span>";
-    }
-    html += "</div>";
-
-    html +=
-      '<details style="margin-top:16px;">' +
-      '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw History JSON</summary>' +
-      '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" data-action="copy" data-value="' +
-      esc(JSON.stringify(historyData, null, 2)) +
-      '">Copy JSON</button></div>' +
-      "<pre>" +
-      esc(JSON.stringify(historyData, null, 2)) +
       "</pre></details>";
   }
   const card = document.createElement("div");

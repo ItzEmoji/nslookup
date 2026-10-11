@@ -140,7 +140,7 @@ describe("API clients", () => {
     expect((await readLookup(res)).dns.A.consensus?.value).toBe("A-record");
   });
 
-  test.each(["/ip", "/ipv4", "/whois", "/abuse", "/ssl", "/history", "/security", "/propagated"])(
+  test.each(["/ip", "/ipv4", "/whois", "/abuse", "/ssl", "/security", "/propagated"])(
     "%s without a target shows usage with the real origin",
     async (path) => {
       const res = await get(path);
@@ -154,6 +154,13 @@ describe("API clients", () => {
     const res = await get("/proxy-dns?url=https://internal.test/q&name=example.com&type=A");
     expect(res.status).toBe(400);
     expect(requestedUrls(fake)).toEqual([]);
+  });
+
+  test("/history is gone and never contacts SecurityTrails", async () => {
+    const fake = mockUpstreams();
+    const res = await get("/history/example.com?apikey=secret");
+    expect(res.status).toBe(400);
+    expect(requestedUrls(fake).some((url) => url.includes("securitytrails"))).toBe(false);
   });
 
   test("invalid targets are rejected", async () => {

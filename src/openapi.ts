@@ -79,8 +79,7 @@ export function openApiDocument(origin: string) {
         "The same URLs serve a web app to browsers. Any request that isn't a browser page",
         "navigation (`Accept: text/html` or `Sec-Fetch-Mode: navigate`) gets the API response.",
         "",
-        "Every endpoint is CORS-enabled (`Access-Control-Allow-Origin: *`) and needs no key,",
-        "except `/history`, which forwards your own SecurityTrails key.",
+        "Every endpoint is CORS-enabled (`Access-Control-Allow-Origin: *`) and needs no key.",
       ].join("\n"),
       license: { name: "See repository", url: "https://github.com/itzemoji/nslookup" },
     },
@@ -89,7 +88,7 @@ export function openApiDocument(origin: string) {
       url: `${origin}/api-docs`,
     },
     servers: [{ url: origin }],
-    // Public: no authentication. /history overrides this with its own key.
+    // Public: no endpoint needs authentication.
     security: [{}],
     tags: [
       { name: "DNS", description: "Record lookups across resolvers." },
@@ -364,32 +363,6 @@ export function openApiDocument(origin: string) {
           },
         },
       },
-      "/history/{domain}": {
-        get: {
-          operationId: "getDnsHistory",
-          tags: ["Domain"],
-          summary: "Historical A records",
-          description:
-            "SecurityTrails' A-record history, passed through with SecurityTrails' status code. Requires your own SecurityTrails API key; it is forwarded and not stored.",
-          parameters: [domainPath(), param("preview")],
-          security: [{ securityTrailsHeader: [] }, { securityTrailsQuery: [] }],
-          responses: {
-            "200": {
-              description: "SecurityTrails history response.",
-              content: json({ type: "object", additionalProperties: true }),
-            },
-            "400": badRequest,
-            "401": {
-              description: "No API key was given.",
-              content: json(ref("Error")),
-            },
-            "500": {
-              description: "SecurityTrails couldn't be reached.",
-              content: json(ref("Error")),
-            },
-          },
-        },
-      },
       "/help": {
         get: {
           operationId: "getHelp",
@@ -438,20 +411,6 @@ export function openApiDocument(origin: string) {
           description: "Present (any value) to pretty-print the JSON.",
           allowEmptyValue: true,
           schema: { type: "string" },
-        },
-      },
-      securitySchemes: {
-        securityTrailsHeader: {
-          type: "apiKey",
-          in: "header",
-          name: "X-API-Key",
-          description: "Your SecurityTrails API key.",
-        },
-        securityTrailsQuery: {
-          type: "apiKey",
-          in: "query",
-          name: "apikey",
-          description: "Your SecurityTrails API key. Prefer the header: URLs end up in logs.",
         },
       },
       schemas: {

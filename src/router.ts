@@ -4,7 +4,6 @@ import { openApiDocument } from "./openapi.ts";
 import { appPage } from "./pages/index.ts";
 import { abuse } from "./routes/abuse.ts";
 import { addresses, firstAddress } from "./routes/addresses.ts";
-import { history } from "./routes/history.ts";
 import { clientIp, lookup } from "./routes/lookup.ts";
 import { apiDocs, help } from "./routes/pages.ts";
 import { propagated } from "./routes/propagated.ts";
@@ -22,7 +21,6 @@ const API_ROUTES: Record<string, Handler> = {
   whois,
   abuse,
   ssl,
-  history,
   security,
   propagated,
 };
