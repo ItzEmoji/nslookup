@@ -4,6 +4,7 @@ import appShellAsset from "./app/index.html" with { type: "text" };
 import appStylesAsset from "./app/styles.css" with { type: "text" };
 import helpAsset from "./help.html" with { type: "text" };
 import helpTextAsset from "./help.txt" with { type: "text" };
+import sharedStylesAsset from "./shared.css" with { type: "text" };
 
 // `with { type: "text" }` makes every import a string at runtime, but Bun's
 // type definitions declare `*.html` imports as HTML bundles regardless of
@@ -15,16 +16,24 @@ const asText = (asset: unknown) => asset as string;
 const inlined = (template: string, marker: string, content: string) =>
   template.replace(`<!-- inline:${marker} -->`, () => content);
 
-const withOrigin = (template: unknown, origin: string) =>
-  asText(template).replaceAll("{{ORIGIN}}", () => origin);
+// Every HTML page shares one stylesheet: tokens, the dashboard shell, cards,
+// tables, buttons and badges.
+const withShared = (template: unknown) =>
+  inlined(asText(template), "shared.css", `<style>${asText(sharedStylesAsset)}</style>`);
 
-/** The single-page web app, with its stylesheet and script inlined. */
+const withOrigin = (template: string, origin: string) =>
+  template.replaceAll("{{ORIGIN}}", () => origin);
+
+/** The single-page web app, with its stylesheets and script inlined. */
 export const appPage = inlined(
-  inlined(asText(appShellAsset), "styles.css", `<style>${asText(appStylesAsset)}</style>`),
+  inlined(withShared(appShellAsset), "styles.css", `<style>${asText(appStylesAsset)}</style>`),
   "app.js",
   `<script>${asText(appScriptAsset)}</script>`,
 );
 
-export const helpPage = (origin: string) => withOrigin(helpAsset, origin);
-export const helpText = (origin: string) => withOrigin(helpTextAsset, origin);
-export const apiDocsPage = (origin: string) => withOrigin(apiDocsAsset, origin);
+const helpShell = withShared(helpAsset);
+const apiDocsShell = withShared(apiDocsAsset);
+
+export const helpPage = (origin: string) => withOrigin(helpShell, origin);
+export const helpText = (origin: string) => withOrigin(asText(helpTextAsset), origin);
+export const apiDocsPage = (origin: string) => withOrigin(apiDocsShell, origin);
