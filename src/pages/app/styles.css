@@ -783,6 +783,8 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   margin-bottom: 16px;
 }
 .card-title {
@@ -833,8 +835,96 @@ button:disabled {
   align-items: center;
   gap: 6px;
 }
-.consensus-meta .check {
+.consensus-meta .material-symbols-rounded {
+  font-size: 16px;
+}
+.consensus-meta.full .material-symbols-rounded {
   color: var(--success);
+}
+.consensus-meta.expected .material-symbols-rounded {
+  color: var(--info);
+}
+.consensus-meta.partial {
+  color: var(--warning);
+}
+.consensus-failure {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--error);
+}
+.consensus-failure .material-symbols-rounded {
+  font-size: 16px;
+}
+
+/* Per-type agreement status in the card header */
+.agreement {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.agreement .material-symbols-rounded {
+  font-size: 16px;
+}
+.agreement.agree {
+  color: var(--success);
+  border-color: rgba(var(--success-rgb), 0.35);
+  background: rgba(var(--success-rgb), 0.08);
+}
+.agreement.split {
+  color: var(--warning);
+  border-color: rgba(var(--warning-rgb), 0.5);
+  background: rgba(var(--warning-rgb), 0.12);
+}
+.agreement.varies {
+  color: var(--info);
+  border-color: rgba(var(--info-rgb), 0.35);
+  background: rgba(var(--info-rgb), 0.08);
+}
+
+/* Explains lookups skipped for a subdomain */
+.skipped-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.skipped-note > .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--info);
+  margin-top: 1px;
+}
+.link-btn {
+  all: unset;
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  color: var(--link-hover);
+}
+.link-btn:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 .consensus-divider {
   border-top: 1px solid var(--border);
@@ -1059,6 +1149,37 @@ pre {
 }
 .security-item.missing {
   border-color: rgba(var(--error-rgb), 0.1);
+}
+.security-item.warn .label {
+  color: var(--warning);
+}
+.security-item.warn {
+  border-color: rgba(var(--warning-rgb), 0.35);
+}
+.security-item.neutral .label {
+  color: var(--text-secondary);
+}
+.security-item .status .material-symbols-rounded {
+  font-size: 16px;
+}
+.security-item.found .status .material-symbols-rounded {
+  color: var(--success);
+}
+.security-item.missing .status .material-symbols-rounded {
+  color: var(--error);
+}
+.security-item.warn .status .material-symbols-rounded {
+  color: var(--warning);
+}
+.security-item.neutral .status .material-symbols-rounded {
+  color: var(--text-muted);
+}
+.security-item .note {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 /* === WHOIS === */

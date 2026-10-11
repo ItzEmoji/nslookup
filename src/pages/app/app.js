@@ -841,42 +841,94 @@ async function queryDNS(domain, type, resolverName, resolverUrl) {
 }
 
 // ===== CONSENSUS =====
-function buildConsensus(arr) {
-  const map = {};
+// Mirrors normalizeAnswer() in src/lib/dns.ts so the app and the API agree on
+// what counts as the same answer. Cloudflare quotes TXT strings where Google
+// returns them bare, and names may differ in case or a trailing dot.
+const QUOTED_TXT = /^"(?:[^"\\]|\\.)*"(?:\s+"(?:[^"\\]|\\.)*")*$/;
+
+function normalizeAnswer(data, type) {
+  const value = String(data ?? "").trim();
+  if (type === "TXT" || type === "SPF") {
+    if (!QUOTED_TXT.test(value)) return value;
+    return [...value.matchAll(/"((?:[^"\\]|\\.)*)"/g)]
+      .map((m) => m[1].replace(/\\(.)/g, "$1"))
+      .join("");
+  }
+  return value.toLowerCase().replace(/(\S)\.(?=\s|$)/g, "$1");
+}
+
+function answerSet(result, type) {
+  return [...new Set((result.answers || []).map((a) => normalizeAnswer(a.data, type)))]
+    .sort()
+    .join("|");
+}
+
+/**
+ * Groups answers by normalized value and works out whether resolvers agree.
+ * status: "agree" (every resolver returned the same set), "varies" (A/AAAA
+ * differ but every resolver answered, normal for CDNs and geo-DNS), "split"
+ * (anything else, including a resolver that failed), or "single" (only one
+ * resolver was asked, so there is nothing to compare).
+ */
+function buildConsensus(arr, type) {
+  const groups = new Map();
   for (const r of arr) {
     for (const a of r.answers || []) {
-      const v = a.data;
-      if (!map[v]) map[v] = [];
-      map[v].push(r.resolver);
+      const key = normalizeAnswer(a.data, type);
+      // TXT is shown unquoted and joined, which is also what you want to copy.
+      const display = type === "TXT" || type === "SPF" ? key : a.data;
+      const group = groups.get(key) || { value: display, confirmedBy: [] };
+      if (!group.confirmedBy.includes(r.resolver)) group.confirmedBy.push(r.resolver);
+      groups.set(key, group);
     }
   }
-  const sorted = Object.entries(map).sort((a, b) => b[1].length - a[1].length);
-  if (!sorted.length) return null;
-  return { values: sorted.map(([v, by]) => ({ value: v, confirmedBy: by })) };
+  if (!groups.size) return null;
+
+  const total = arr.length;
+  const failed = arr.filter((r) => r.error);
+  let status = "split";
+  if (total === 1) status = "single";
+  else if (!failed.length && arr.every((r) => answerSet(r, type) === answerSet(arr[0], type)))
+    status = "agree";
+  else if (
+    (type === "A" || type === "AAAA") &&
+    !failed.length &&
+    arr.every((r) => (r.answers || []).length)
+  )
+    status = "varies";
+
+  const values = [...groups.values()].sort((a, b) => b.confirmedBy.length - a.confirmedBy.length);
+  return {
+    values,
+    status,
+    total,
+    resolvers: arr.map((r) => r.resolver),
+    failed: failed.map((r) => ({ resolver: r.resolver, error: r.error })),
+  };
 }
 
 // ===== SECURITY ANALYSIS =====
-function analyzeSecurityRecords(dnsData) {
-  const sec = { spf: null, dmarc: null, dkim: false, hasCAA: false };
-  if (dnsData.TXT) {
-    const all = [];
-    for (const rn in dnsData.TXT.resolvers) {
-      const rd = dnsData.TXT.resolvers[rn];
-      if (rd.answers) all.push(...rd.answers);
-    }
-    for (const a of all) {
-      if (a.data && a.data.includes("v=spf1")) sec.spf = a.data;
-      if (a.data && a.data.includes("v=DMARC1")) sec.dmarc = a.data;
-      if (a.data && a.data.includes("v=DKIM1")) sec.dkim = true;
-    }
+function txtValues(results) {
+  const values = new Set();
+  for (const r of results || []) {
+    for (const a of r.answers || []) values.add(normalizeAnswer(a.data, "TXT"));
   }
+  return [...values];
+}
+
+function analyzeSecurityRecords(dnsData, dmarcResults) {
+  const apexTxt = dnsData.TXT ? txtValues(Object.values(dnsData.TXT.resolvers)) : [];
+  const spf = apexTxt.filter((v) => /^v=spf1(\s|$)/i.test(v));
+  const dmarc = txtValues(dmarcResults).filter((v) => /^v=DMARC1(\s*;|$)/i.test(v));
+  let caa = [];
   if (dnsData.CAA) {
-    for (const rn in dnsData.CAA.resolvers) {
-      const rd = dnsData.CAA.resolvers[rn];
-      if (rd.answers && rd.answers.length) sec.hasCAA = true;
-    }
+    caa = [
+      ...new Set(
+        Object.values(dnsData.CAA.resolvers).flatMap((rd) => (rd.answers || []).map((a) => a.data)),
+      ),
+    ];
   }
-  return sec;
+  return { spf, dmarc, caa };
 }
 
 // ===== MAIN LOOKUP =====
@@ -891,7 +943,7 @@ async function triggerLookup(inputId) {
     /^[a-zA-Z0-9¡-￿.-]+\.[a-zA-Z0-9¡-￿]{2,}$/.test(domain) || domain === "localhost";
 
   if (!ipv4Regex.test(domain) && !isIPv6 && !isValidDomain) {
-    showToast("Please enter a valid domain or IP address", "error");
+    showToast('"' + domain + '" is not a domain or IP address', "error");
     return;
   }
 
@@ -934,14 +986,33 @@ async function triggerLookup(inputId) {
     return;
   }
 
+  // The security card needs TXT (for SPF) even when TXT isn't a displayed type,
+  // and DMARC lives at _dmarc.<domain>, not in the domain's own TXT records.
+  const wantsSecurity = userSettings.features.enableSecurity && !isReverseSearch;
+  const queryTypes = [...lookupTypes];
+  if (wantsSecurity && !queryTypes.includes("TXT")) queryTypes.push("TXT");
+
+  document.querySelector("#loading .loader-text").textContent =
+    "Querying " +
+    activeResolvers.length +
+    (activeResolvers.length === 1 ? " resolver" : " resolvers") +
+    " for " +
+    lookupTypes.join(", ") +
+    "…";
+
   const fetchPromises = [];
-  for (const type of lookupTypes) {
+  for (const type of queryTypes) {
     for (const [name, data] of activeResolvers) {
       fetchPromises.push(
         queryDNS(dnsQueryName, type, name, data.url).then((result) => ({ type, result })),
       );
     }
   }
+  const dmarcPromise = wantsSecurity
+    ? Promise.all(
+        activeResolvers.map(([name, data]) => queryDNS("_dmarc." + domain, "TXT", name, data.url)),
+      )
+    : Promise.resolve([]);
 
   let whoisPromise = null;
   let historyPromise = null;
@@ -975,7 +1046,7 @@ async function triggerLookup(inputId) {
       .catch((e) => ({ error: e.message }));
   }
 
-  const allResults = await Promise.all(fetchPromises);
+  const [allResults, dmarcResults] = await Promise.all([Promise.all(fetchPromises), dmarcPromise]);
 
   const finalResults = {};
   for (const item of allResults) {
@@ -984,9 +1055,9 @@ async function triggerLookup(inputId) {
     finalResults[item.type].rawArray.push(item.result);
   }
 
-  for (const type of lookupTypes) {
+  for (const type of queryTypes) {
     if (finalResults[type]) {
-      finalResults[type].consensus = buildConsensus(finalResults[type].rawArray);
+      finalResults[type].consensus = buildConsensus(finalResults[type].rawArray, type);
       delete finalResults[type].rawArray;
     }
   }
@@ -996,10 +1067,12 @@ async function triggerLookup(inputId) {
     timestamp: new Date().toISOString(),
     isReverseSearch,
     dns: finalResults,
+    dmarc: wantsSecurity ? dmarcResults : undefined,
     whois: null,
   };
   document.getElementById("loading").classList.add("hidden");
-  renderResults(finalResults, null, lookupTypes, domain, isReverseSearch);
+  renderResults(finalResults, null, lookupTypes, domain, isReverseSearch, dmarcResults);
+  if (!isReverseSearch && isSubdomain(domain)) renderSkippedNotice(domain);
 
   if (whoisPromise) {
     whoisPromise.then((whoisResult) => {
@@ -1030,7 +1103,119 @@ async function triggerLookup(inputId) {
 }
 
 // ===== RENDER =====
-function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
+// Best guess at the registered domain: the last two labels, or three for
+// short second-level labels under a country code (example.co.uk).
+function registeredDomain(domain) {
+  const parts = domain.split(".");
+  const n = parts.length;
+  const ccSld = n > 2 && parts[n - 1].length === 2 && parts[n - 2].length <= 3;
+  return parts.slice(ccSld ? -3 : -2).join(".");
+}
+
+// WHOIS, SSL and history only run on registered domains. Say so instead of
+// leaving the operator to wonder whether they ran at all.
+function renderSkippedNotice(domain) {
+  const skipped = [];
+  if (userSettings.features.enableWhois) skipped.push("WHOIS");
+  if (userSettings.features.enableSsl) skipped.push("certificates");
+  if (userSettings.advanced.historyKey) skipped.push("DNS history");
+  if (!skipped.length) return;
+  const parent = registeredDomain(domain);
+  const list =
+    skipped.length === 1
+      ? skipped[0]
+      : skipped.slice(0, -1).join(", ") + " and " + skipped[skipped.length - 1];
+  const note = document.createElement("div");
+  note.className = "skipped-note";
+  note.innerHTML =
+    '<span class="material-symbols-rounded" aria-hidden="true">info</span><span>' +
+    esc(list) +
+    (skipped.length === 1 ? " is" : " are") +
+    " looked up for registered domains only, so " +
+    (skipped.length === 1 ? "it was" : "they were") +
+    " skipped for " +
+    esc(domain) +
+    ". " +
+    '<button class="link-btn" data-action="lookup" data-value="' +
+    esc(parent) +
+    '">Look up ' +
+    esc(parent) +
+    "</button></span>";
+  const header = document.querySelector("#results .domain-header");
+  if (header) header.after(note);
+}
+
+const AGREEMENT_ICON = { agree: "check_circle", varies: "info", split: "warning", single: "dns" };
+
+function agreementLabel(c) {
+  if (c.status === "single") return "1 resolver";
+  if (c.status === "agree") return c.total + "/" + c.total + " resolvers agree";
+  if (c.status === "varies") return "Addresses differ by resolver";
+  return "Resolvers disagree";
+}
+
+function agreementTitle(c) {
+  if (c.status === "varies")
+    return "Every resolver answered, with different addresses. Normal for CDNs and geo-DNS.";
+  if (c.status === "single") return "Only one resolver is active, so there is nothing to compare.";
+  return "";
+}
+
+// "2/2 · Cloudflare, Google" for a value every resolver returned;
+// "1/2 · Cloudflare · not from Google" for one only some returned.
+function valueMeta(cv, c) {
+  const all = cv.confirmedBy.length === c.total;
+  const missing = c.resolvers.filter((r) => !cv.confirmedBy.includes(r));
+  const kind = all ? "full" : c.status === "varies" ? "expected" : "partial";
+  const icon = all ? "check_circle" : kind === "expected" ? "info" : "warning";
+  return (
+    '<div class="consensus-meta ' +
+    kind +
+    '"><span class="material-symbols-rounded" aria-hidden="true">' +
+    icon +
+    "</span>" +
+    cv.confirmedBy.length +
+    "/" +
+    c.total +
+    " · " +
+    esc(cv.confirmedBy.join(", ")) +
+    (missing.length ? " · not from " + esc(missing.join(", ")) : "") +
+    "</div>"
+  );
+}
+
+const SECURITY_ICON = {
+  found: "check_circle",
+  missing: "cancel",
+  warn: "warning",
+  neutral: "info",
+};
+
+// state: found | missing | warn | neutral. `record` is shown with a Copy button.
+function securityItem(label, state, status, note, record) {
+  return (
+    '<div class="security-item ' +
+    state +
+    '"><div class="label">' +
+    esc(label) +
+    '</div><div class="status"><span class="material-symbols-rounded" aria-hidden="true">' +
+    SECURITY_ICON[state] +
+    "</span>" +
+    esc(status) +
+    "</div>" +
+    (note ? '<div class="note">' + esc(note) + "</div>" : "") +
+    (record
+      ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
+        esc(record) +
+        '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
+        esc(record) +
+        "</pre>"
+      : "") +
+    "</div>"
+  );
+}
+
+function renderResults(dnsData, whoisData, typesRendered, domain, isReverse, dmarcResults) {
   const container = document.getElementById("results");
   container.innerHTML = "";
   let delayIndex = 0;
@@ -1074,15 +1259,28 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
     const section = dnsData[type];
     if (!section) continue;
 
+    const c = section.consensus;
     let html =
       '<div class="card-header"><div class="card-title"><span class="type-badge">' +
       esc(type) +
-      "</span> Record</div></div>";
+      "</span> Record</div>" +
+      (c
+        ? '<span class="agreement ' +
+          c.status +
+          '"' +
+          (agreementTitle(c) ? ' title="' + esc(agreementTitle(c)) + '"' : "") +
+          '><span class="material-symbols-rounded" aria-hidden="true">' +
+          AGREEMENT_ICON[c.status] +
+          "</span>" +
+          esc(agreementLabel(c)) +
+          "</span>"
+        : "") +
+      "</div>";
 
-    if (section.consensus && section.consensus.values && section.consensus.values.length) {
+    if (c && c.values && c.values.length) {
       html += '<div class="consensus">';
-      for (let i = 0; i < section.consensus.values.length; i++) {
-        const cv = section.consensus.values[i];
+      for (let i = 0; i < c.values.length; i++) {
+        const cv = c.values[i];
         const value = String(cv.value);
         // Only values that are entirely an IP address become links; anything
         // else (TXT with a colon, for instance) stays plain escaped text.
@@ -1098,11 +1296,16 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
           '<button class="copy-btn" data-action="copy" data-value="' +
           esc(value) +
           '">Copy</button></div>' +
-          '<div class="consensus-meta"><span class="check material-symbols-rounded" style="display:inline-flex;align-items:center;margin-right:4px;font-size:16px;">check_circle</span> Confirmed by ' +
-          esc(cv.confirmedBy.join(", ")) +
+          valueMeta(cv, c);
+        if (i < c.values.length - 1) html += '<div class="consensus-divider"></div>';
+      }
+      for (const f of c.failed) {
+        html +=
+          '<div class="consensus-failure"><span class="material-symbols-rounded" aria-hidden="true">error</span>' +
+          esc(f.resolver) +
+          " failed: " +
+          esc(f.error) +
           "</div>";
-        if (i < section.consensus.values.length - 1)
-          html += '<div class="consensus-divider"></div>';
       }
       html += "</div>";
     } else {
@@ -1122,7 +1325,10 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
           esc(commonError) +
           "</span></div>";
       } else {
-        html += '<div class="small" style="margin-top: 10px; opacity: 0.5;">No records found</div>';
+        html +=
+          '<div class="small" style="margin-top: 10px; color: var(--text-muted);">No ' +
+          esc(type) +
+          " records</div>";
       }
     }
 
@@ -1167,66 +1373,73 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
 
   // Security Analysis
   if (userSettings.features.enableSecurity && !isReverse) {
-    const sec = analyzeSecurityRecords(dnsData);
+    const sec = analyzeSecurityRecords(dnsData, dmarcResults);
+    const dmarcName = "_dmarc." + domain;
+    const dmarcPolicy = sec.dmarc.length ? (sec.dmarc[0].match(/\bp=([a-z]+)/i) || [])[1] : null;
     let secHtml =
-      '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">security</span></span> Security Analysis</div></div>';
+      '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;" aria-hidden="true">security</span></span> Security Analysis</div></div>';
     secHtml += '<div class="security-grid">';
-    secHtml +=
-      '<div class="security-item ' +
-      (sec.spf ? "found" : "missing") +
-      '">' +
-      '<div class="label">SPF</div>' +
-      '<div class="status" style="display:inline-flex;align-items:center;">' +
-      (sec.spf
-        ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Found'
-        : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') +
-      "</div>" +
-      (sec.spf
-        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
-          esc(sec.spf.replace(/"/g, "")) +
-          '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
-          esc(sec.spf.replace(/"/g, "")) +
-          "</pre>"
-        : "") +
-      "</div>";
-    secHtml +=
-      '<div class="security-item ' +
-      (sec.dmarc ? "found" : "missing") +
-      '">' +
-      '<div class="label">DMARC</div>' +
-      '<div class="status" style="display:inline-flex;align-items:center;">' +
-      (sec.dmarc
-        ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Detected'
-        : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') +
-      "</div>" +
-      (sec.dmarc
-        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
-          esc(sec.dmarc.replace(/"/g, "")) +
-          '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
-          esc(sec.dmarc.replace(/"/g, "")) +
-          "</pre>"
-        : "") +
-      "</div>";
-    secHtml +=
-      '<div class="security-item ' +
-      (sec.dkim ? "found" : "missing") +
-      '">' +
-      '<div class="label">DKIM</div>' +
-      '<div class="status" style="display:inline-flex;align-items:center;">' +
-      (sec.dkim
-        ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Detected'
-        : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--outline);font-size:16px;">info</span> Not in TXT') +
-      "</div></div>";
-    secHtml +=
-      '<div class="security-item ' +
-      (sec.hasCAA ? "found" : "missing") +
-      '">' +
-      '<div class="label">CAA</div>' +
-      '<div class="status" style="display:inline-flex;align-items:center;">' +
-      (sec.hasCAA
-        ? '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--success);font-size:16px;">check_circle</span> Configured'
-        : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') +
-      "</div></div>";
+
+    if (sec.spf.length === 1) secHtml += securityItem("SPF", "found", "Found", "", sec.spf[0]);
+    else if (sec.spf.length > 1)
+      secHtml += securityItem(
+        "SPF",
+        "warn",
+        sec.spf.length + " SPF records",
+        "Receivers treat more than one as an error (permerror). Merge them into one.",
+        sec.spf.join("\n"),
+      );
+    else secHtml += securityItem("SPF", "missing", "No SPF record", "", null);
+
+    if (sec.dmarc.length)
+      secHtml += securityItem(
+        "DMARC",
+        dmarcPolicy && dmarcPolicy.toLowerCase() === "none" ? "warn" : "found",
+        "Found" + (dmarcPolicy ? " · p=" + dmarcPolicy : ""),
+        dmarcPolicy && dmarcPolicy.toLowerCase() === "none"
+          ? "Monitoring only: failing mail is still delivered."
+          : "",
+        sec.dmarc[0],
+      );
+    else if (isSubdomain(domain))
+      secHtml += securityItem(
+        "DMARC",
+        "neutral",
+        "None at " + dmarcName,
+        "The policy at _dmarc." +
+          registeredDomain(domain) +
+          " applies to subdomains unless sp= says otherwise.",
+        null,
+      );
+    else secHtml += securityItem("DMARC", "missing", "No record at " + dmarcName, "", null);
+
+    secHtml += securityItem(
+      "DKIM",
+      "neutral",
+      "Needs a selector",
+      "DKIM keys live at <selector>._domainkey." +
+        domain +
+        ". Selectors can't be listed from DNS; find one in a message's DKIM-Signature header (s=).",
+      null,
+    );
+
+    if (sec.caa.length)
+      secHtml += securityItem(
+        "CAA",
+        "found",
+        sec.caa.length === 1 ? "1 record" : sec.caa.length + " records",
+        "",
+        sec.caa.join("\n"),
+      );
+    else
+      secHtml += securityItem(
+        "CAA",
+        "neutral",
+        "None",
+        "Any certificate authority may issue for this domain.",
+        null,
+      );
+
     secHtml += "</div>";
     appendCard(secHtml);
   }
@@ -1427,7 +1640,8 @@ function scrollToRecord(type) {
 async function openIpModal(ip) {
   document.getElementById("ipModal").classList.remove("hidden");
   document.getElementById("modalTitle").innerText = ip;
-  document.getElementById("modalDetails").innerHTML = "Fetching provider info... ⏳";
+  document.getElementById("modalDetails").textContent =
+    "Looking up the network owner via ipinfo.io…";
   if (leafletMap) {
     leafletMap.remove();
     leafletMap = null;
