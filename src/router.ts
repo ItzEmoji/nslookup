@@ -64,8 +64,9 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   if (pathname === "/help") return help(ctx);
   if (pathname === "/api-docs") return apiDocs(ctx);
-  // JSON for everyone, browsers included, so the link can be opened or imported as-is.
-  if (pathname === "/openapi.json") return json(openApiDocument(ctx.url.origin), { space: 2 });
+  // JSON for everyone, browsers included; compact like every endpoint, ?preview pretty-prints.
+  if (pathname === "/openapi.json")
+    return json(openApiDocument(ctx.url.origin), { space: ctx.jsonSpace });
   if (!ctx.wantsApi) return serveApp(ctx);
 
   const route = apiRouteFor(pathname);

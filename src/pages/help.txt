@@ -34,3 +34,4 @@ EXAMPLES
     curl "{{ORIGIN}}/google.com?type=TXT"
     curl {{ORIGIN}}/ipv4/github.com
     curl -o openapi.json {{ORIGIN}}/openapi.json
+    curl "{{ORIGIN}}/openapi.json?preview"

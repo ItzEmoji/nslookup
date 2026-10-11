@@ -412,6 +412,7 @@ export function openApiDocument(origin: string) {
           operationId: "getOpenApi",
           tags: ["Meta"],
           summary: "This document",
+          parameters: [param("preview")],
           responses: {
             "200": {
               description: "OpenAPI 3.1 description of this API.",

@@ -55,6 +55,15 @@ describe("GET /openapi.json", () => {
     }
   });
 
+  test("is compact like every other endpoint, and pretty-printed with ?preview", async () => {
+    const body = async (query: string) =>
+      (
+        await handleRequest(new Request(`${ORIGIN}/openapi.json${query}`, { headers: CLIENT }))
+      ).text();
+    expect(await body("")).toBe(`${JSON.stringify(spec)}\n`);
+    expect(await body("?preview")).toBe(`${JSON.stringify(spec, null, 2)}\n`);
+  });
+
   test("points at the deployment it was fetched from and carries the package version", () => {
     expect(spec.servers).toEqual([{ url: ORIGIN }]);
     expect(spec.info.version).toBe(pkg.version);
