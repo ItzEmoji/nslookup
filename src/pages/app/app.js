@@ -1,109 +1,10 @@
 // ===== GLOBALS =====
-let MCU = null;
-import("https://esm.sh/@material/material-color-utilities@0.3.0").then((m) => {
-  MCU = m;
-  if (userSettings.theme === "custom") updateCustomTheme();
-});
 let latestData = null;
 let leafletMap = null;
 let queryHistory = JSON.parse(localStorage.getItem("lookup_history") || "[]");
 
-const themes = {
-  blue: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#17468D",
-    link: "#A8C7FA",
-    linkHover: "#D3E3FD",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-  green: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#0F5223",
-    link: "#93D5A5",
-    linkHover: "#B6ECC3",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-  purple: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#4D2C87",
-    link: "#D0BCFF",
-    linkHover: "#E8DEF8",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-  red: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#8C1D18",
-    link: "#FFB4AB",
-    linkHover: "#FFDAD6",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-  orange: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#825500",
-    link: "#FFB951",
-    linkHover: "#FFDDB3",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-};
-
 const defaultSettings = {
-  theme: "blue",
-  customTheme: {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: "#ff79c6",
-    link: "#ff79c6",
-    linkHover: "#131316",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  },
-  customFont: "",
+  appearance: "system",
   resolvers: {
     Cloudflare: { url: "https://cloudflare-dns.com/dns-query", active: true },
     Google: { url: "https://dns.google/resolve", active: true },
@@ -172,29 +73,26 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ===== ICONS =====
+// Inline SVG symbols defined at the top of index.html.
+function icon(name) {
+  return '<svg class="icon" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+}
+
 // ===== TOAST =====
 function showToast(msg, type) {
   const c = document.getElementById("toastContainer");
   const t = document.createElement("div");
-  t.className = "toast";
-  const iconCheck =
-    '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">check_circle</span>';
-  const iconCross =
-    '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">cancel</span>';
-  const iconInfo =
-    '<span class="material-symbols-rounded" style="vertical-align:middle;margin-right:6px;font-size:18px;">info</span>';
-  const icon = type === "success" ? iconCheck : type === "error" ? iconCross : iconInfo;
+  t.className = "toast" + (type ? " " + type : "");
   t.innerHTML =
-    '<span style="display:inline-flex;align-items:center;font-weight:600;">' +
-    icon +
+    icon(type === "success" ? "check" : type === "error" ? "error" : "info") +
+    "<span>" +
     esc(msg) +
     "</span>";
   c.appendChild(t);
   setTimeout(() => {
-    t.style.opacity = "0";
-    t.style.transform = "translateY(10px)";
-    t.style.transition = "all 0.3s ease";
-    setTimeout(() => t.remove(), 300);
+    t.classList.add("leaving");
+    setTimeout(() => t.remove(), 200);
   }, 2500);
 }
 
@@ -231,12 +129,7 @@ function loadSettings() {
             p.resolvers[k] = { url: p.resolvers[k], active: true };
         }
       }
-      userSettings.theme = p.theme || defaultSettings.theme;
-      if (userSettings.theme !== "custom" && !themes[userSettings.theme]) {
-        userSettings.theme = "blue";
-      }
-      userSettings.customTheme = { ...defaultSettings.customTheme, ...(p.customTheme || {}) };
-      userSettings.customFont = p.customFont || "";
+      userSettings.appearance = ["light", "dark"].includes(p.appearance) ? p.appearance : "system";
       userSettings.resolvers = p.resolvers || defaultSettings.resolvers;
       userSettings.features = { ...defaultSettings.features, ...(p.features || {}) };
       userSettings.advanced = { ...defaultSettings.advanced, ...(p.advanced || {}) };
@@ -246,30 +139,21 @@ function loadSettings() {
     }
   }
 
-  // Theme highlighted in applyTheme
-  if (userSettings.theme === "custom") {
-    document.getElementById("cAccent").value = userSettings.customTheme.accent;
-  }
-  document.getElementById("customFontInput").value = userSettings.customFont;
   document.getElementById("setAnimations").checked = userSettings.features.animations;
   document.getElementById("setWhois").checked = userSettings.features.enableWhois;
   document.getElementById("setSecurity").checked = userSettings.features.enableSecurity !== false;
-  if (document.getElementById("setSsl")) {
-    document.getElementById("setSsl").checked = userSettings.features.enableSsl === true;
-  }
+  document.getElementById("setSsl").checked = userSettings.features.enableSsl === true;
   document.getElementById("setRdapServer").value = userSettings.advanced.rdapServer;
   document.getElementById("setTimeout").value = userSettings.advanced.timeout;
-  if (document.getElementById("setSslProvider")) {
-    document.getElementById("setSslProvider").value =
-      userSettings.advanced.sslProvider || "certspotter";
-  }
+  document.getElementById("setSslProvider").value =
+    userSettings.advanced.sslProvider || "certspotter";
 
-  applyTheme(userSettings.theme);
-  applyFont(userSettings.customFont);
+  applyAppearance(userSettings.appearance);
   toggleBodyAnimations();
   renderRecordSettings();
   renderSettingsResolvers();
   renderHistory();
+  renderHomeNote();
 }
 
 function saveSettings() {
@@ -300,133 +184,61 @@ function resetSettings() {
 }
 
 // ===== THEME =====
-function hexToRgb(hex) {
-  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return r ? parseInt(r[1], 16) + "," + parseInt(r[2], 16) + "," + parseInt(r[3], 16) : null;
-}
-
-function hslToHex(h, s, l) {
-  l /= 100;
-  const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return "#" + f(0) + f(8) + f(4);
-}
-
-function applyTheme(name) {
+// "system" follows prefers-color-scheme; light and dark pin the theme.
+function applyAppearance(mode) {
   const root = document.documentElement;
-  const editor = document.getElementById("customThemeEditor");
-  let source = name === "custom" ? userSettings.customTheme : themes[name] || themes.blue;
-
-  if (name === "custom") editor.classList.remove("hidden");
-  else editor.classList.add("hidden");
-
-  document.querySelectorAll(".font-preset-tag[data-theme]").forEach((tag) => {
-    tag.classList.toggle("active", tag.dataset.theme === name);
-  });
-  root.style.setProperty("--bg", source.bg);
-  root.style.setProperty("--surface", source.surface);
-  root.style.setProperty("--border", source.border);
-  root.style.setProperty("--surface-hover", source.surfaceHover);
-  root.style.setProperty("--accent", source.accent);
-  root.style.setProperty("--link", source.link);
-  root.style.setProperty("--link-hover", source.linkHover);
-  root.style.setProperty("--text", source.text);
-  root.style.setProperty("--text-muted", source.textMuted);
-  root.style.setProperty("--error-bg", source.errorBg);
-  root.style.setProperty("--error-border", source.errorBorder);
-
-  const bgRgb = hexToRgb(source.bg);
-  if (bgRgb) root.style.setProperty("--bg-rgb", bgRgb);
-  root.style.setProperty("--success", source.success || "#22c55e");
-  root.style.setProperty("--error", source.error || "#ef4444");
-  const sRgb = hexToRgb(source.success || "#22c55e");
-  if (sRgb) root.style.setProperty("--success-rgb", sRgb);
-  const eRgb = hexToRgb(source.error || "#ef4444");
-  if (eRgb) root.style.setProperty("--error-rgb", eRgb);
-
-  userSettings.theme = name;
+  if (mode === "light" || mode === "dark") root.dataset.theme = mode;
+  else delete root.dataset.theme;
+  for (const input of document.querySelectorAll('input[name="appearance"]')) {
+    input.checked = input.value === mode;
+  }
+  userSettings.appearance = mode;
   saveSettings();
 }
 
-function updateCustomTheme() {
-  const acc = document.getElementById("cAccent").value;
-  userSettings.customTheme = {
-    bg: "#131316",
-    surface: "#201F23",
-    surfaceHover: "#2A2A2D",
-    border: "#46464F",
-    text: "#E4E1E6",
-    textMuted: "#918F9A",
-    accent: acc,
-    link: acc,
-    linkHover: "#131316",
-    errorBg: "#93000A",
-    errorBorder: "#FFB4AB",
-    success: "#6DD58C",
-    error: "#FFB4AB",
-  };
-  applyTheme("custom");
+function isDarkTheme() {
+  const pinned = document.documentElement.dataset.theme;
+  if (pinned) return pinned === "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-// ===== FONT =====
-function applyFont(fontName) {
-  const actual = fontName || "Roboto";
-  userSettings.customFont = actual === "Roboto" ? "" : actual;
-  saveSettings();
-  document.getElementById("customFontInput").value = userSettings.customFont;
-  document.querySelectorAll(".font-preset-tag[data-font]").forEach((tag) => {
-    tag.classList.toggle(
-      "active",
-      tag.dataset.font === actual || (actual === "Roboto" && tag.dataset.font === "Roboto"),
-    );
-  });
-
-  const root = document.documentElement;
-  if (actual === "Roboto") {
-    root.style.setProperty("--custom-font", "'Roboto', -apple-system, sans-serif");
-    const old = document.getElementById("dynamic-google-font");
-    if (old) old.remove();
+// One line under the home search naming the resolvers that will be asked.
+function renderHomeNote() {
+  const active = Object.entries(userSettings.resolvers)
+    .filter(([_, d]) => d.active)
+    .map(([name]) => name);
+  const note = document.getElementById("homeNote");
+  if (!note) return;
+  if (!active.length) {
+    note.textContent = "No resolvers are active. Turn one on in Settings.";
     return;
   }
-
-  const formatted = actual.replace(/ /g, "+");
-  let link = document.getElementById("dynamic-google-font");
-  if (!link) {
-    link = document.createElement("link");
-    link.id = "dynamic-google-font";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-  }
-  link.href =
-    "https://fonts.googleapis.com/css2?family=" +
-    formatted +
-    ":wght@400;500;600;700;800&display=swap";
-  const fallback = actual.includes("Mono") || actual.includes("Code") ? "monospace" : "sans-serif";
-  root.style.setProperty("--custom-font", "'" + actual + "', " + fallback);
+  const names =
+    active.length === 1
+      ? active[0]
+      : active.slice(0, -1).join(", ") + " and " + active[active.length - 1];
+  note.textContent =
+    active.length === 1
+      ? "Asks " + names + "."
+      : "Asks " + names + " in parallel and shows where they agree.";
 }
 
 // ===== RECORD SETTINGS =====
 function renderRecordSettings() {
   const c = document.getElementById("recordCheckboxes");
-  c.innerHTML = "";
   if (!userSettings.defaultRecords) userSettings.defaultRecords = defaultSettings.defaultRecords;
-  availableRecords.forEach((r) => {
-    const active = userSettings.defaultRecords.includes(r);
-    c.innerHTML +=
-      '<div class="selectable-tag ' +
-      (active ? "active" : "") +
-      '" data-action="toggle-record" data-value="' +
-      esc(r) +
-      '">' +
-      esc(r) +
-      "</div>";
-  });
+  c.innerHTML = availableRecords
+    .map(
+      (r) =>
+        '<button type="button" class="selectable-tag" aria-pressed="' +
+        userSettings.defaultRecords.includes(r) +
+        '" data-action="toggle-record" data-value="' +
+        esc(r) +
+        '">' +
+        esc(r) +
+        "</button>",
+    )
+    .join("");
 }
 
 function toggleRecord(record) {
@@ -449,61 +261,57 @@ let editingResolverName = null;
 
 function renderSettingsResolvers() {
   const c = document.getElementById("resolverList");
-  c.innerHTML = "";
-  c.className = "";
+  let html = "";
   for (const [name, data] of Object.entries(userSettings.resolvers)) {
-    const isChecked = data.active ? "checked" : "";
     if (editingResolverName === name) {
-      c.innerHTML +=
+      html +=
         '<div class="resolver-card editing">' +
         '<input type="text" class="settings-input" id="editResName" value="' +
         esc(name) +
-        '" placeholder="Name" style="margin-bottom:8px;">' +
-        '<textarea class="settings-input" id="editResUrl" rows="2" style="resize:vertical; margin-bottom:12px; font-family:var(--font-mono); font-size:12px;">' +
+        '" placeholder="Name" aria-label="Resolver name">' +
+        '<textarea class="settings-input mono" id="editResUrl" rows="2" aria-label="Resolver URL">' +
         esc(data.url) +
         "</textarea>" +
-        '<div style="display:flex; justify-content:flex-end; gap:8px;">' +
+        '<div class="row-end">' +
         '<button class="btn-danger" style="margin-right:auto;" data-action="remove-resolver" data-value="' +
         esc(name) +
         '">Delete</button>' +
         '<button class="btn-outline" onclick="cancelEditResolver()">Cancel</button>' +
-        '<button data-action="save-resolver" data-value="' +
+        '<button class="btn-primary" data-action="save-resolver" data-value="' +
         esc(name) +
         '">Save</button>' +
         "</div></div>";
     } else {
-      const cardBorder = data.active
-        ? "border-color: var(--accent); background: rgba(var(--info-rgb), 0.03);"
-        : "";
-      c.innerHTML +=
-        '<div class="resolver-card" style="' +
-        cardBorder +
-        '">' +
-        '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
-        '<div style="flex:1; min-width:0;">' +
-        '<div style="font-weight:600; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">' +
+      html +=
+        '<div class="resolver-card' +
+        (data.active ? " active" : "") +
+        '"><div class="resolver-row"><div>' +
+        '<div class="resolver-title">' +
         esc(name) +
-        '<span class="material-symbols-rounded" style="font-size:14px; cursor:pointer; opacity:0.5;" data-action="edit-resolver" data-value="' +
+        '<button class="icon-btn" data-action="edit-resolver" data-value="' +
         esc(name) +
-        '" title="Edit">edit</span>' +
-        "</div>" +
-        '<div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="' +
+        '" aria-label="Edit ' +
+        esc(name) +
+        '" title="Edit">' +
+        icon("edit") +
+        "</button></div>" +
+        '<div class="resolver-url" title="' +
         esc(data.url) +
         '">' +
         esc(data.url) +
-        "</div>" +
-        "</div>" +
-        '<label class="toggle-switch" style="margin-top:2px;">' +
-        '<input type="checkbox" ' +
-        isChecked +
-        ' data-action="toggle-resolver" data-value="' +
+        "</div></div>" +
+        '<label class="toggle-switch"><input type="checkbox" ' +
+        (data.active ? "checked " : "") +
+        'data-action="toggle-resolver" data-value="' +
         esc(name) +
-        '">' +
-        '<span class="toggle-slider"></span>' +
-        "</label>" +
+        '" aria-label="Use ' +
+        esc(name) +
+        '"><span class="toggle-slider"></span></label>' +
         "</div></div>";
     }
   }
+  c.innerHTML = html;
+  renderHomeNote();
 }
 
 function toggleResolver(name) {
@@ -627,22 +435,26 @@ function clearHistory() {
 
 function renderHistory() {
   const section = document.getElementById("historySection");
-  const chips = document.getElementById("historyChips");
+  const list = document.getElementById("historyChips");
   if (!queryHistory.length) {
     section.classList.add("hidden");
     return;
   }
   section.classList.remove("hidden");
-  chips.innerHTML = queryHistory
+  list.innerHTML = queryHistory
     .map(
       (d) =>
-        '<div class="history-chip" data-action="lookup" data-value="' +
+        '<li><button class="list-item" data-action="lookup" data-value="' +
         esc(d) +
-        '">' +
+        '"><span class="mono">' +
         esc(d) +
-        '<span class="x" data-action="remove-history" data-value="' +
+        '</span></button><button class="icon-btn list-remove" data-action="remove-history" data-value="' +
         esc(d) +
-        '">✕</span></div>',
+        '" aria-label="Remove ' +
+        esc(d) +
+        ' from recent" title="Remove">' +
+        icon("close") +
+        "</button></li>",
     )
     .join("");
 }
@@ -726,6 +538,7 @@ const clickActions = {
   ip: (value) => openIpModal(value),
   copy: (value, el) => copyToClipboard(value, el),
   "toggle-record": (value) => toggleRecord(value),
+  "toggle-row": (value, el) => toggleRow(value, el),
   "edit-resolver": (value) => editResolver(value),
   "remove-resolver": (value) => removeResolver(value),
   "save-resolver": (value) => saveEditResolver(value),
@@ -774,19 +587,32 @@ function expandIPv6ToArpa(ip) {
 async function copyToClipboard(text, btnEl) {
   try {
     await navigator.clipboard.writeText(text);
-    const iconCheck =
-      '<span class="material-symbols-rounded" style="vertical-align:text-bottom;margin-right:4px;font-size:16px;">check_circle</span>';
     if (btnEl) {
+      if (!btnEl.dataset.idle) btnEl.dataset.idle = btnEl.innerHTML;
       btnEl.classList.add("copied");
-      btnEl.innerHTML = iconCheck + "Copied";
-      setTimeout(() => {
+      btnEl.innerHTML = icon("check") + (btnEl.classList.contains("labelled") ? "Copied" : "");
+      clearTimeout(btnEl._copyTimer);
+      btnEl._copyTimer = setTimeout(() => {
         btnEl.classList.remove("copied");
-        btnEl.textContent = "Copy";
+        btnEl.innerHTML = btnEl.dataset.idle;
       }, 1500);
-    } else showToast("Copied!", "success");
+    } else showToast("Copied", "success");
   } catch (err) {
-    showToast("Failed to copy", "error");
+    showToast("Couldn't copy to the clipboard", "error");
   }
+}
+
+// Icon-only copy button; `label` names what is copied for screen readers.
+function copyButton(value, label) {
+  return (
+    '<button class="copy-btn" data-action="copy" data-value="' +
+    esc(value) +
+    '" aria-label="Copy ' +
+    esc(label) +
+    '" title="Copy">' +
+    icon("copy") +
+    "</button>"
+  );
 }
 
 function getTimingClass(ms) {
@@ -970,28 +796,28 @@ async function triggerLookup(inputId) {
     openIpModal(domain);
   }
 
-  if (userSettings.features.enableSecurity && !isReverseSearch && !lookupTypes.includes("CAA")) {
-    lookupTypes.push("CAA");
-  }
+  // CAA is queried for the TLS panel even when it isn't a chosen record type.
+  const wantsSecurity = userSettings.features.enableSecurity && !isReverseSearch;
+  if (wantsSecurity && !lookupTypes.includes("CAA")) lookupTypes.push("CAA");
 
   const activeResolvers = Object.entries(userSettings.resolvers).filter(([_, d]) => d.active);
   if (!activeResolvers.length) {
     document.getElementById("results").innerHTML =
-      '<div class="card" style="animation-delay:0s;opacity:1;"><span class="error-badge badge">No active resolvers! Go to settings.</span></div>';
+      '<section class="panel"><div class="panel-note">' +
+      icon("warn") +
+      '<span>No resolvers are active. <button class="link-btn" onclick="openSettings()">Open settings</button> and turn one on.</span></div></section>';
     document.getElementById("loading").classList.add("hidden");
     return;
   }
 
-  // The security card needs TXT (for SPF) even when TXT isn't a displayed type,
+  // The mail panel needs TXT (for SPF) even when TXT isn't a displayed type,
   // and DMARC lives at _dmarc.<domain>, not in the domain's own TXT records.
-  const wantsSecurity = userSettings.features.enableSecurity && !isReverseSearch;
   const queryTypes = [...lookupTypes];
   if (wantsSecurity && !queryTypes.includes("TXT")) queryTypes.push("TXT");
 
   document.querySelector("#loading .loader-text").textContent =
-    "Querying " +
-    activeResolvers.length +
-    (activeResolvers.length === 1 ? " resolver" : " resolvers") +
+    "Asking " +
+    activeResolvers.map(([name]) => name).join(", ") +
     " for " +
     lookupTypes.join(", ") +
     "…";
@@ -1010,10 +836,11 @@ async function triggerLookup(inputId) {
       )
     : Promise.resolve([]);
 
+  const registered = !isReverseSearch && !isSubdomain(domain);
   let whoisPromise = null;
   let sslPromise = null;
 
-  if (userSettings.features.enableSsl && !isReverseSearch && !isSubdomain(domain)) {
+  if (userSettings.features.enableSsl && registered) {
     sslPromise = fetch(
       "/ssl/" + domain + "?provider=" + encodeURIComponent(userSettings.advanced.sslProvider),
     )
@@ -1021,16 +848,16 @@ async function triggerLookup(inputId) {
       .catch((e) => ({ error: e.message }));
   }
 
-  if (userSettings.features.enableWhois && !isReverseSearch && !isSubdomain(domain)) {
+  if (userSettings.features.enableWhois && registered) {
     let rdapUrl = userSettings.advanced.rdapServer;
     if (!rdapUrl.endsWith("/")) rdapUrl += "/";
+    const started = Date.now();
     whoisPromise = fetch(rdapUrl + domain, {
       headers: { accept: "application/rdap+json, application/json" },
     })
       .then((r) => (r.ok ? r.json() : { error: "HTTP " + r.status }))
+      .then((d) => (d && !d.error ? { ...d, _latency: Date.now() - started } : d))
       .catch((e) => ({ error: e.message }));
-  } else {
-    whoisPromise = Promise.resolve(null);
   }
 
   const [allResults, dmarcResults] = await Promise.all([Promise.all(fetchPromises), dmarcPromise]);
@@ -1058,24 +885,23 @@ async function triggerLookup(inputId) {
     whois: null,
   };
   document.getElementById("loading").classList.add("hidden");
-  renderResults(finalResults, null, lookupTypes, domain, isReverseSearch, dmarcResults);
-  if (!isReverseSearch && isSubdomain(domain)) renderSkippedNotice(domain);
+  renderResults(finalResults, lookupTypes, domain, isReverseSearch, dmarcResults, {
+    resolvers: activeResolvers.map(([name]) => name),
+    whoisPending: !!whoisPromise,
+    sslPending: !!sslPromise,
+  });
 
   if (whoisPromise) {
     whoisPromise.then((whoisResult) => {
-      if (whoisResult) {
-        latestData.whois = whoisResult;
-        renderWhoisCard(whoisResult, domain);
-      }
+      if (whoisResult) latestData.whois = whoisResult;
+      renderWhoisCard(whoisResult, domain);
     });
   }
 
   if (sslPromise) {
     sslPromise.then((sslResult) => {
-      if (sslResult) {
-        latestData.ssl = sslResult;
-        renderSslCard(sslResult, domain);
-      }
+      if (sslResult) latestData.ssl = sslResult;
+      renderSslCard(sslResult, domain);
     });
   }
 }
@@ -1090,45 +916,129 @@ function registeredDomain(domain) {
   return parts.slice(ccSld ? -3 : -2).join(".");
 }
 
-// WHOIS and SSL only run on registered domains. Say so instead of
-// leaving the operator to wonder whether they ran at all.
-function renderSkippedNotice(domain) {
-  const skipped = [];
-  if (userSettings.features.enableWhois) skipped.push("WHOIS");
-  if (userSettings.features.enableSsl) skipped.push("certificates");
-  if (!skipped.length) return;
+// WHOIS and certificates only run on registered domains. Say so in their
+// panel instead of leaving the operator to wonder whether they ran at all.
+function skippedNote(what, domain) {
   const parent = registeredDomain(domain);
-  const list =
-    skipped.length === 1
-      ? skipped[0]
-      : skipped.slice(0, -1).join(", ") + " and " + skipped[skipped.length - 1];
-  const note = document.createElement("div");
-  note.className = "skipped-note";
-  note.innerHTML =
-    '<span class="material-symbols-rounded" aria-hidden="true">info</span><span>' +
-    esc(list) +
-    (skipped.length === 1 ? " is" : " are") +
-    " looked up for registered domains only, so " +
-    (skipped.length === 1 ? "it was" : "they were") +
-    " skipped for " +
+  return (
+    '<div class="panel-note">' +
+    icon("info") +
+    "<span>" +
+    esc(what) +
+    " is looked up for registered domains only, so it was skipped for " +
     esc(domain) +
-    ". " +
-    '<button class="link-btn" data-action="lookup" data-value="' +
+    '. <button class="link-btn" data-action="lookup" data-value="' +
     esc(parent) +
     '">Look up ' +
     esc(parent) +
-    "</button></span>";
-  const header = document.querySelector("#results .domain-header");
-  if (header) header.after(note);
+    "</button></span></div>"
+  );
 }
 
-const AGREEMENT_ICON = { agree: "check_circle", varies: "info", split: "warning", single: "dns" };
+function pendingNote(text) {
+  return '<p class="pending-text" role="status">' + esc(text) + "</p>";
+}
 
-function agreementLabel(c) {
-  if (c.status === "single") return "1 resolver";
-  if (c.status === "agree") return c.total + "/" + c.total + " resolvers agree";
-  if (c.status === "varies") return "Addresses differ by resolver";
-  return "Resolvers disagree";
+// Lab-report vocabulary: a check has a result, an optional flag and a
+// reference. Normal results carry no flag; only out-of-range ones get colour.
+function checkRow(o) {
+  const flag = o.flag
+    ? '<span class="flag flag-' + o.flag + '">' + esc(o.flagText) + "</span>"
+    : '<span class="sr-only">Normal</span>';
+  const more = o.detail
+    ? '<button class="row-toggle" aria-expanded="false" aria-controls="' +
+      o.detailId +
+      '" data-action="toggle-row" data-value="' +
+      o.detailId +
+      '">Answers' +
+      icon("chevron") +
+      "</button>"
+    : "";
+  return (
+    '<tr class="check"' +
+    (o.flag ? ' data-flag="' + o.flag + '"' : "") +
+    (o.id ? ' id="' + o.id + '"' : "") +
+    '><th scope="row" class="c-check">' +
+    esc(o.check) +
+    '</th><td class="c-result">' +
+    o.result +
+    '</td><td class="c-flag">' +
+    flag +
+    '</td><td class="c-ref">' +
+    o.ref +
+    '</td><td class="c-more">' +
+    more +
+    "</td></tr>" +
+    (o.detail
+      ? '<tr class="check-detail" id="' +
+        o.detailId +
+        '" hidden><td colspan="5">' +
+        o.detail +
+        "</td></tr>"
+      : "")
+  );
+}
+
+function checksTable(rows, caption) {
+  return (
+    '<table class="checks"><caption class="sr-only">' +
+    esc(caption) +
+    '</caption><thead><tr><th scope="col" class="c-check">Check</th><th scope="col">Result</th>' +
+    '<th scope="col" class="c-flag">Flag</th><th scope="col" class="c-ref">Reference</th>' +
+    '<th scope="col" class="c-more"><span class="sr-only">Details</span></th></tr></thead><tbody>' +
+    rows +
+    "</tbody></table>"
+  );
+}
+
+function panel(id, title, summary, body) {
+  return (
+    '<section class="panel" id="panel-' +
+    id +
+    '" aria-labelledby="panel-' +
+    id +
+    '-title"><div class="panel-head"><h2 id="panel-' +
+    id +
+    '-title">' +
+    esc(title) +
+    '</h2><span class="panel-sum">' +
+    summary +
+    '</span></div><div class="panel-body">' +
+    body +
+    "</div></section>"
+  );
+}
+
+function setPanelBody(id, summary, body) {
+  const el = document.getElementById("panel-" + id);
+  if (!el) return;
+  el.querySelector(".panel-sum").innerHTML = summary;
+  el.querySelector(".panel-body").innerHTML = body;
+  updateIndex();
+}
+
+// Flag counts in the letterhead index, recomputed whenever a panel changes.
+function updateIndex() {
+  for (const link of document.querySelectorAll(".report-index a")) {
+    const p = document.getElementById(link.dataset.panel);
+    const count = link.querySelector(".count");
+    if (!p || !count) continue;
+    if (p.querySelector(".pending-text")) {
+      count.className = "count";
+      count.textContent = "Pending";
+      continue;
+    }
+    const fails = p.querySelectorAll('.check[data-flag="fail"]').length;
+    const warns = p.querySelectorAll('.check[data-flag="warn"]').length;
+    const n = fails + warns;
+    count.className = "count" + (n ? " flagged" : "") + (fails ? " failed" : "");
+    count.textContent = n ? n + " flagged" : "Normal";
+  }
+}
+
+function flaggedSummary(rowsHtml, n) {
+  const flagged = (rowsHtml.match(/data-flag="(warn|fail)"/g) || []).length;
+  return n + (n === 1 ? " check" : " checks") + (flagged ? " · " + flagged + " flagged" : "");
 }
 
 function agreementTitle(c) {
@@ -1138,248 +1048,247 @@ function agreementTitle(c) {
   return "";
 }
 
-// "2/2 · Cloudflare, Google" for a value every resolver returned;
-// "1/2 · Cloudflare · not from Google" for one only some returned.
+// Only shown when a value did not come back from every resolver.
 function valueMeta(cv, c) {
-  const all = cv.confirmedBy.length === c.total;
+  if (cv.confirmedBy.length === c.total) return "";
   const missing = c.resolvers.filter((r) => !cv.confirmedBy.includes(r));
-  const kind = all ? "full" : c.status === "varies" ? "expected" : "partial";
-  const icon = all ? "check_circle" : kind === "expected" ? "info" : "warning";
   return (
-    '<div class="consensus-meta ' +
-    kind +
-    '"><span class="material-symbols-rounded" aria-hidden="true">' +
-    icon +
-    "</span>" +
+    '<span class="val-meta' +
+    (c.status === "varies" ? " expected" : "") +
+    '">' +
     cv.confirmedBy.length +
     "/" +
     c.total +
     " · " +
     esc(cv.confirmedBy.join(", ")) +
     (missing.length ? " · not from " + esc(missing.join(", ")) : "") +
-    "</div>"
+    "</span>"
   );
 }
 
-const SECURITY_ICON = {
-  found: "check_circle",
-  missing: "cancel",
-  warn: "warning",
-  neutral: "info",
-};
-
-// state: found | missing | warn | neutral. `record` is shown with a Copy button.
-function securityItem(label, state, status, note, record) {
-  return (
-    '<div class="security-item ' +
-    state +
-    '"><div class="label">' +
-    esc(label) +
-    '</div><div class="status"><span class="material-symbols-rounded" aria-hidden="true">' +
-    SECURITY_ICON[state] +
-    "</span>" +
-    esc(status) +
-    "</div>" +
-    (note ? '<div class="note">' + esc(note) + "</div>" : "") +
-    (record
-      ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
-        esc(record) +
-        '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
-        esc(record) +
-        "</pre>"
-      : "") +
-    "</div>"
-  );
+// DNS status words are the leading code of the resolver error ("NXDOMAIN (…)").
+function errorCode(err) {
+  return String(err).split(" (")[0];
 }
 
-function renderResults(dnsData, whoisData, typesRendered, domain, isReverse, dmarcResults) {
-  const container = document.getElementById("results");
-  container.innerHTML = "";
-  let delayIndex = 0;
-  const ipv4Regex =
+// Escapes first, then links IPs. The patterns only match digits, hex,
+// dots and colons, so the inserted markup can't pick up untrusted text.
+function linkifyIPs(str, ipLink) {
+  const ipv4 =
     /\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g;
-
-  function ipLink(ip) {
-    return '<span class="ip-link" data-action="ip" data-value="' + ip + '">' + ip + "</span>";
-  }
-
-  // Escapes first, then links IPs. The patterns only match digits, hex,
-  // dots and colons, so the inserted markup can't pick up untrusted text.
-  function linkifyIPs(str) {
-    let linked = esc(str).replace(ipv4Regex, (m) => ipLink(m));
-    linked = linked.replace(
+  return esc(str)
+    .replace(ipv4, (m) => ipLink(m))
+    .replace(
       /&quot;([0-9a-fA-F:]+:[0-9a-fA-F:]+)&quot;/g,
       (m, p1) => "&quot;" + ipLink(p1) + "&quot;",
     );
-    return linked;
+}
+
+function dnsRow(type, section, ipLink) {
+  const c = section.consensus;
+  const results = Object.values(section.resolvers);
+  const total = results.length;
+  const row = { check: type, id: "record-" + type, detailId: "detail-" + type };
+
+  if (c && c.values && c.values.length) {
+    let html = '<ul class="values">';
+    for (const cv of c.values) {
+      const value = String(cv.value);
+      // Only values that are entirely an IP address become links; anything
+      // else (TXT with a colon, for instance) stays plain escaped text.
+      const isIp =
+        /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(value);
+      html +=
+        '<li class="val"><span class="v">' +
+        (isIp ? ipLink(value) : esc(value)) +
+        valueMeta(cv, c) +
+        "</span>" +
+        copyButton(value, type + " value") +
+        "</li>";
+    }
+    html += "</ul>";
+    for (const f of c.failed) {
+      html += '<p class="fail-line">' + esc(f.resolver) + ": " + esc(f.error) + "</p>";
+    }
+    row.result = html;
+    if (c.status === "agree") row.ref = c.total + "/" + c.total + " resolvers agree";
+    else if (c.status === "single") row.ref = "1 resolver";
+    else if (c.status === "varies") {
+      row.flag = "note";
+      row.flagText = "Varies";
+      row.ref = esc(agreementTitle(c));
+    } else {
+      row.flag = "warn";
+      row.flagText = "Split";
+      row.ref = "Resolvers disagree";
+    }
+  } else {
+    const errors = results.filter((r) => r.error).map((r) => r.error);
+    if (errors.length) {
+      const counts = {};
+      for (const e of errors) counts[e] = (counts[e] || 0) + 1;
+      const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      row.flag = "fail";
+      row.flagText = errorCode(common);
+      row.result = '<span class="empty">' + esc(common) + "</span>";
+      row.ref = errors.length + "/" + total + " resolvers returned this";
+    } else {
+      row.result = '<span class="empty">No ' + esc(type) + " records</span>";
+      row.ref = total === 1 ? "1 resolver" : total + "/" + total + " resolvers agree";
+    }
   }
 
-  function appendCard(html) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.style.animationDelay = delayIndex * 0.08 + "s";
-    card.innerHTML = html;
-    container.appendChild(card);
-    delayIndex++;
-  }
-
-  // Domain Header
-  const hdr = document.createElement("div");
-  hdr.className = "domain-header";
-  hdr.innerHTML = "<h2>" + esc(domain) + "</h2>";
-  container.appendChild(hdr);
-
-  // Record Overview Pills removed as requested
-
-  // DNS Record Cards
-  for (const type of typesRendered) {
-    const section = dnsData[type];
-    if (!section) continue;
-
-    const c = section.consensus;
-    let html =
-      '<div class="card-header"><div class="card-title"><span class="type-badge">' +
-      esc(type) +
-      "</span> Record</div>" +
-      (c
-        ? '<span class="agreement ' +
-          c.status +
-          '"' +
-          (agreementTitle(c) ? ' title="' + esc(agreementTitle(c)) + '"' : "") +
-          '><span class="material-symbols-rounded" aria-hidden="true">' +
-          AGREEMENT_ICON[c.status] +
-          "</span>" +
-          esc(agreementLabel(c)) +
-          "</span>"
+  // Per-resolver answers, side by side.
+  let detail = '<div class="answers">';
+  for (const resName in section.resolvers) {
+    const rd = section.resolvers[resName];
+    detail +=
+      '<div class="answer"><div class="answer-head"><span class="resolver-name">' +
+      esc(resName) +
+      '</span><span class="timing ' +
+      getTimingClass(rd.duration) +
+      '">' +
+      rd.duration +
+      " ms</span>" +
+      (!rd.error && rd.answers.length
+        ? copyButton(JSON.stringify(rd.answers, null, 2), resName + " answer JSON")
         : "") +
       "</div>";
+    if (rd.error) detail += '<span class="flag flag-fail">' + esc(rd.error) + "</span>";
+    else if (rd.answers.length)
+      detail += "<pre>" + linkifyIPs(JSON.stringify(rd.answers, null, 2), ipLink) + "</pre>";
+    else detail += '<pre class="empty">No records</pre>';
+    detail += "</div>";
+  }
+  row.detail = detail + "</div>";
+  return checkRow(row);
+}
 
-    if (c && c.values && c.values.length) {
-      html += '<div class="consensus">';
-      for (let i = 0; i < c.values.length; i++) {
-        const cv = c.values[i];
-        const value = String(cv.value);
-        // Only values that are entirely an IP address become links; anything
-        // else (TXT with a colon, for instance) stays plain escaped text.
-        const isIp =
-          new RegExp("^" + ipv4Regex.source + "$").test(value) ||
-          /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(value);
-        const displayVal = isIp ? ipLink(value) : esc(value);
-        html +=
-          '<div class="consensus-row">' +
-          '<div class="consensus-value">' +
-          displayVal +
-          "</div>" +
-          '<button class="copy-btn" data-action="copy" data-value="' +
-          esc(value) +
-          '">Copy</button></div>' +
-          valueMeta(cv, c);
-        if (i < c.values.length - 1) html += '<div class="consensus-divider"></div>';
-      }
-      for (const f of c.failed) {
-        html +=
-          '<div class="consensus-failure"><span class="material-symbols-rounded" aria-hidden="true">error</span>' +
-          esc(f.resolver) +
-          " failed: " +
-          esc(f.error) +
-          "</div>";
-      }
-      html += "</div>";
-    } else {
-      const errors = [];
-      for (const resName in section.resolvers) {
-        if (section.resolvers[resName].error) errors.push(section.resolvers[resName].error);
-      }
-      if (errors.length > 0) {
-        const errorMap = {};
-        for (const e of errors) {
-          errorMap[e] = (errorMap[e] || 0) + 1;
-        }
-        const sortedErrors = Object.entries(errorMap).sort((a, b) => b[1] - a[1]);
-        const commonError = sortedErrors[0][0];
-        html +=
-          '<div style="margin-top: 12px;"><span class="error-badge badge" style="font-size: 13px; padding: 6px 12px;">' +
-          esc(commonError) +
-          "</span></div>";
-      } else {
-        html +=
-          '<div class="small" style="margin-top: 10px; color: var(--text-muted);">No ' +
-          esc(type) +
-          " records</div>";
-      }
-    }
+const MAIL_FLAG = {
+  missing: ["fail", "Missing"],
+  warn: ["warn", "Review"],
+  neutral: ["note", "Note"],
+};
 
-    html +=
-      '<details id="record-' +
-      esc(type) +
-      '"><summary><span class="material-symbols-rounded chevron">chevron_right</span> Resolver Details</summary>';
-    for (const resName in section.resolvers) {
-      const rd = section.resolvers[resName];
-      html +=
-        '<div class="resolver-result"><div class="resolver-header">' +
-        '<div class="resolver-name">' +
-        esc(resName) +
-        "</div>";
-      if (rd.error) {
-        html += '<span class="badge error-badge">' + esc(rd.error) + "</span>";
-      } else {
-        html += '<div style="display:flex;gap:8px;align-items:center;">';
-        html +=
-          '<button class="copy-btn" data-action="copy" data-value="' +
-          esc(JSON.stringify(rd.answers, null, 2)) +
-          '">Copy JSON</button>';
-        html +=
-          '<span class="resolver-timing ' +
-          getTimingClass(rd.duration) +
-          '">' +
-          rd.duration +
-          "ms</span>";
-        html += "</div>";
-      }
-      html += "</div>";
-      if (!rd.error && rd.answers.length) {
-        html += "<pre>" + linkifyIPs(JSON.stringify(rd.answers, null, 2)) + "</pre>";
-      } else if (!rd.error) {
-        html += "<pre>No records</pre>";
-      }
-      html += "</div>";
-    }
-    html += "</details>";
-    appendCard(html);
+// state: found | missing | warn | neutral. `record` is shown with a copy button.
+function mailRow(check, state, status, note, record, ref) {
+  const [flag, flagText] = MAIL_FLAG[state] || [];
+  return checkRow({
+    check,
+    flag,
+    flagText,
+    result:
+      '<div class="status-line">' +
+      esc(status) +
+      "</div>" +
+      (note ? '<p class="check-note">' + esc(note) + "</p>" : "") +
+      (record
+        ? '<div class="record"><pre>' +
+          esc(record) +
+          "</pre>" +
+          copyButton(record, check + " record") +
+          "</div>"
+        : ""),
+    ref: '<span class="mono">' + esc(ref) + "</span>",
+  });
+}
+
+function caaRow(dnsData, domain) {
+  const sec = analyzeSecurityRecords(dnsData, []);
+  if (sec.caa.length)
+    return mailRow(
+      "CAA",
+      "found",
+      sec.caa.length === 1 ? "1 record" : sec.caa.length + " records",
+      "",
+      sec.caa.join("\n"),
+      "CAA " + domain,
+    );
+  return mailRow(
+    "CAA",
+    "neutral",
+    "None",
+    "Any certificate authority may issue for this domain.",
+    null,
+    "CAA " + domain,
+  );
+}
+
+function rdapSource() {
+  return userSettings.advanced.rdapServer.replace(/^https?:\/\//, "").split("/")[0];
+}
+
+function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, ctx) {
+  const container = document.getElementById("results");
+
+  // IP values become buttons that open the IP info modal.
+  function ipLink(ip) {
+    return (
+      '<button type="button" class="ip-link" data-action="ip" data-value="' +
+      ip +
+      '" title="Network and location for ' +
+      ip +
+      '">' +
+      ip +
+      "</button>"
+    );
   }
 
-  // Security Analysis
-  if (userSettings.features.enableSecurity && !isReverse) {
+  const showMail = userSettings.features.enableSecurity && !isReverse;
+  const showRegistry = userSettings.features.enableWhois && !isReverse;
+  const showTls = !isReverse && (showMail || userSettings.features.enableSsl);
+  const subdomain = !isReverse && isSubdomain(domain);
+
+  // DNS: CAA lives in the TLS panel unless it was chosen as a record type.
+  const dnsTypes = typesRendered.filter(
+    (t) => dnsData[t] && !(t === "CAA" && showMail && !userSettings.defaultRecords.includes("CAA")),
+  );
+  const dnsRows = dnsTypes.map((t) => dnsRow(t, dnsData[t], ipLink)).join("");
+  const dnsTitle = isReverse ? "Reverse DNS" : "DNS";
+  const panels = [
+    {
+      id: "dns",
+      title: dnsTitle,
+      html: panel(
+        "dns",
+        dnsTitle,
+        flaggedSummary(dnsRows, dnsTypes.length),
+        checksTable(dnsRows, "DNS records by type"),
+      ),
+    },
+  ];
+
+  if (showMail) {
     const sec = analyzeSecurityRecords(dnsData, dmarcResults);
     const dmarcName = "_dmarc." + domain;
     const dmarcPolicy = sec.dmarc.length ? (sec.dmarc[0].match(/\bp=([a-z]+)/i) || [])[1] : null;
-    let secHtml =
-      '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;" aria-hidden="true">security</span></span> Security Analysis</div></div>';
-    secHtml += '<div class="security-grid">';
+    let rows = "";
 
-    if (sec.spf.length === 1) secHtml += securityItem("SPF", "found", "Found", "", sec.spf[0]);
+    if (sec.spf.length === 1)
+      rows += mailRow("SPF", "found", "Found", "", sec.spf[0], "TXT " + domain);
     else if (sec.spf.length > 1)
-      secHtml += securityItem(
+      rows += mailRow(
         "SPF",
         "warn",
         sec.spf.length + " SPF records",
         "Receivers treat more than one as an error (permerror). Merge them into one.",
         sec.spf.join("\n"),
+        "TXT " + domain,
       );
-    else secHtml += securityItem("SPF", "missing", "No SPF record", "", null);
+    else rows += mailRow("SPF", "missing", "No SPF record", "", null, "TXT " + domain);
 
-    if (sec.dmarc.length)
-      secHtml += securityItem(
+    if (sec.dmarc.length) {
+      const monitoring = dmarcPolicy && dmarcPolicy.toLowerCase() === "none";
+      rows += mailRow(
         "DMARC",
-        dmarcPolicy && dmarcPolicy.toLowerCase() === "none" ? "warn" : "found",
+        monitoring ? "warn" : "found",
         "Found" + (dmarcPolicy ? " · p=" + dmarcPolicy : ""),
-        dmarcPolicy && dmarcPolicy.toLowerCase() === "none"
-          ? "Monitoring only: failing mail is still delivered."
-          : "",
+        monitoring ? "Monitoring only: failing mail is still delivered." : "",
         sec.dmarc[0],
+        "TXT " + dmarcName,
       );
-    else if (isSubdomain(domain))
-      secHtml += securityItem(
+    } else if (subdomain)
+      rows += mailRow(
         "DMARC",
         "neutral",
         "None at " + dmarcName,
@@ -1387,189 +1296,226 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse, dma
           registeredDomain(domain) +
           " applies to subdomains unless sp= says otherwise.",
         null,
+        "TXT " + dmarcName,
       );
-    else secHtml += securityItem("DMARC", "missing", "No record at " + dmarcName, "", null);
+    else
+      rows += mailRow(
+        "DMARC",
+        "missing",
+        "No record at " + dmarcName,
+        "",
+        null,
+        "TXT " + dmarcName,
+      );
 
-    secHtml += securityItem(
+    rows += mailRow(
       "DKIM",
       "neutral",
       "Needs a selector",
-      "DKIM keys live at <selector>._domainkey." +
-        domain +
-        ". Selectors can't be listed from DNS; find one in a message's DKIM-Signature header (s=).",
+      "Selectors can't be listed from DNS; find one in a message's DKIM-Signature header (s=).",
       null,
+      "TXT <selector>._domainkey." + domain,
     );
 
-    if (sec.caa.length)
-      secHtml += securityItem(
-        "CAA",
-        "found",
-        sec.caa.length === 1 ? "1 record" : sec.caa.length + " records",
-        "",
-        sec.caa.join("\n"),
-      );
-    else
-      secHtml += securityItem(
-        "CAA",
-        "neutral",
-        "None",
-        "Any certificate authority may issue for this domain.",
-        null,
-      );
-
-    secHtml += "</div>";
-    appendCard(secHtml);
+    panels.push({
+      id: "mail",
+      title: "Mail",
+      html: panel("mail", "Mail", flaggedSummary(rows, 3), checksTable(rows, "Mail records")),
+    });
   }
 
-  // WHOIS Render Placeholder handled async
+  if (showRegistry) {
+    const source = esc(rdapSource());
+    panels.push({
+      id: "registry",
+      title: "Registry",
+      html: panel(
+        "registry",
+        "Registry",
+        "RDAP via " + source,
+        subdomain
+          ? skippedNote("Registry data", domain)
+          : ctx.whoisPending
+            ? pendingNote("Waiting for " + rdapSource() + "…")
+            : "",
+      ),
+    });
+  }
+
+  if (showTls) {
+    let body = showMail
+      ? checksTable(caaRow(dnsData, domain), "Certificate authority authorization")
+      : "";
+    if (userSettings.features.enableSsl) {
+      body +=
+        '<div class="tls-certs">' +
+        (subdomain
+          ? skippedNote("Certificate history", domain)
+          : ctx.sslPending
+            ? pendingNote("Waiting for certificate logs…")
+            : "") +
+        "</div>";
+    }
+    const parts = [];
+    if (showMail) parts.push("CAA");
+    if (userSettings.features.enableSsl) parts.push("recent certificates");
+    panels.push({
+      id: "tls",
+      title: "TLS",
+      html: panel("tls", "TLS", esc(parts.join(" and ")), body),
+    });
+  }
+
+  const head =
+    '<section class="report-head"><div class="report-id"><h1 class="report-domain">' +
+    esc(domain) +
+    '</h1><p class="report-meta">' +
+    (isReverse ? "Reverse lookup · " : "") +
+    esc(ctx.resolvers.join(", ")) +
+    " · " +
+    esc(new Date(latestData.timestamp).toLocaleTimeString()) +
+    '</p></div><nav class="report-index" aria-label="Report sections">' +
+    panels
+      .map(
+        (p) =>
+          '<a href="#panel-' +
+          p.id +
+          '" data-panel="panel-' +
+          p.id +
+          '"><span>' +
+          esc(p.title) +
+          '</span><span class="count"></span></a>',
+      )
+      .join("") +
+    "</nav></section>";
+
+  container.innerHTML = head + panels.map((p) => p.html).join("");
+  updateIndex();
+}
+
+function rawJson(label, json) {
+  return (
+    '<details class="raw"><summary>' +
+    icon("chevron") +
+    esc(label) +
+    '</summary><div class="raw-body">' +
+    '<button class="copy-btn labelled" data-action="copy" data-value="' +
+    esc(json) +
+    '">' +
+    icon("copy") +
+    "Copy JSON</button><pre>" +
+    esc(json) +
+    "</pre></div></details>"
+  );
 }
 
 function renderWhoisCard(whoisData, domain) {
-  if (!whoisData || !userSettings.features.enableWhois) return;
-  const container = document.getElementById("results");
-  let html =
-    '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">contact_page</span></span> WHOIS / RDAP</div></div>';
-  if (whoisData.error) {
-    if (whoisData.error === "Skipped") return;
-    html +=
-      '<div class="small" style="color:var(--text-muted);">' + esc(whoisData.error) + "</div>";
-  } else {
-    const name = whoisData.ldhName || whoisData.handle || domain;
-    const status = (whoisData.status || []).join(", ") || "Unknown";
-    const events = whoisData.events || [];
-    const reg = events.find((e) => e.eventAction === "registration");
-    const exp = events.find((e) => e.eventAction === "expiration");
-    const upd = events.find((e) => e.eventAction === "last changed");
-    const nameservers = (whoisData.nameservers || [])
-      .map((ns) => ns.ldhName || ns.objectClassName)
-      .filter(Boolean);
-    const entities = whoisData.entities || [];
-    const registrar = entities.find((e) => (e.roles || []).includes("registrar"));
-    const registrarName =
-      registrar && registrar.vcardArray
-        ? (registrar.vcardArray[1] || []).find((v) => v[0] === "fn")?.[3]
-        : null;
-
-    html += '<div class="whois-grid">';
-    html += '<span class="wlabel">Domain</span><span class="wvalue">' + esc(name) + "</span>";
-    if (registrarName)
-      html +=
-        '<span class="wlabel">Registrar</span><span class="wvalue">' +
-        esc(registrarName) +
-        "</span>";
-    html +=
-      '<span class="wlabel">Status</span><span class="wvalue" style="font-size:12px;">' +
-      esc(status) +
-      "</span>";
-    if (reg)
-      html +=
-        '<span class="wlabel">Registered</span><span class="wvalue">' +
-        new Date(reg.eventDate).toLocaleDateString() +
-        "</span>";
-    if (exp)
-      html +=
-        '<span class="wlabel">Expires</span><span class="wvalue">' +
-        new Date(exp.eventDate).toLocaleDateString() +
-        "</span>";
-    if (upd)
-      html +=
-        '<span class="wlabel">Updated</span><span class="wvalue">' +
-        new Date(upd.eventDate).toLocaleDateString() +
-        "</span>";
-    if (nameservers.length)
-      html +=
-        '<span class="wlabel">Nameservers</span><span class="wvalue">' +
-        esc(nameservers.join(", ")) +
-        "</span>";
-    html += "</div>";
-
-    html +=
-      '<details style="margin-top:16px;">' +
-      '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw RDAP JSON' +
-      (whoisData._latency
-        ? ' <span style="font-size:12px;opacity:0.5;font-weight:normal;margin-left:8px;">(' +
-          esc(whoisData._latency) +
-          "ms)</span>"
-        : "") +
-      "</summary>" +
-      '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" data-action="copy" data-value="' +
-      esc(JSON.stringify(whoisData, null, 2)) +
-      '">Copy JSON</button></div>' +
-      "<pre>" +
-      esc(JSON.stringify(whoisData, null, 2)) +
-      "</pre></details>";
+  if (!document.getElementById("panel-registry")) return;
+  const source = esc(rdapSource());
+  if (!whoisData || whoisData.error) {
+    setPanelBody(
+      "registry",
+      "RDAP via " + source,
+      '<div class="panel-note">' +
+        icon("warn") +
+        "<span>No registry data: " +
+        esc((whoisData && whoisData.error) || "no response") +
+        "</span></div>",
+    );
+    return;
   }
-  const card = document.createElement("div");
-  card.className = "card";
-  card.style.animationDelay = "0s";
-  card.innerHTML = html;
-  container.appendChild(card);
+  const name = whoisData.ldhName || whoisData.handle || domain;
+  const status = (whoisData.status || []).join(", ") || "Unknown";
+  const events = whoisData.events || [];
+  const date = (action) => {
+    const e = events.find((ev) => ev.eventAction === action);
+    return e ? new Date(e.eventDate).toLocaleDateString() : null;
+  };
+  const nameservers = (whoisData.nameservers || [])
+    .map((ns) => ns.ldhName || ns.objectClassName)
+    .filter(Boolean);
+  const registrar = (whoisData.entities || []).find((e) => (e.roles || []).includes("registrar"));
+  const registrarName =
+    registrar && registrar.vcardArray
+      ? (registrar.vcardArray[1] || []).find((v) => v[0] === "fn")?.[3]
+      : null;
+
+  const fact = (label, value, mono) =>
+    value
+      ? "<dt>" + label + "</dt><dd" + (mono ? ' class="mono"' : "") + ">" + esc(value) + "</dd>"
+      : "";
+  setPanelBody(
+    "registry",
+    "RDAP via " + source + (whoisData._latency ? " · " + esc(whoisData._latency) + " ms" : ""),
+    '<dl class="facts">' +
+      fact("Domain", name, true) +
+      fact("Registrar", registrarName) +
+      fact("Status", status) +
+      fact("Registered", date("registration"), true) +
+      fact("Expires", date("expiration"), true) +
+      fact("Updated", date("last changed"), true) +
+      fact("Nameservers", nameservers.join(", "), true) +
+      "</dl>" +
+      rawJson("Raw RDAP response", JSON.stringify(whoisData, null, 2)),
+  );
 }
 
 function renderSslCard(sslData, domain) {
-  if (!sslData || !userSettings.features.enableSsl) return;
-  const container = document.getElementById("results");
-  if (!container) return;
+  const panelEl = document.getElementById("panel-tls");
+  const slot = panelEl && panelEl.querySelector(".tls-certs");
+  if (!slot) return;
+  const source = userSettings.advanced.sslProvider === "crt.sh" ? "crt.sh" : "CertSpotter";
 
-  let html =
-    '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">lock</span></span> SSL Certificates</div></div>';
-  if (sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
+  let html = '<div class="panel-sub">Recent certificates · ' + esc(source) + "</div>";
+  if (!sslData || sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
     html +=
-      '<div class="small" style="color:var(--text-muted);">' +
-      esc(sslData.error || "No SSL certificates found.") +
-      "</div>";
+      '<div class="panel-note">' +
+      icon("info") +
+      "<span>" +
+      esc((sslData && sslData.error) || "No certificates found in the logs.") +
+      "</span></div>";
   } else {
-    html += '<div style="display:grid; gap:12px;">';
-    let records = Array.isArray(sslData) ? sslData.slice(0, 10) : [];
+    const records = Array.isArray(sslData) ? sslData.slice(0, 10) : [];
+    let rows = "";
     for (const rec of records) {
-      let subjects = rec.dns_names
+      const subjects = rec.dns_names
         ? rec.dns_names.join(", ")
         : (rec.name_value || "Unknown").replace(/\n/g, ", ");
-      let notBefore = rec.not_before
-        ? new Date(rec.not_before).toLocaleDateString()
-        : "Unknown Date";
-      let notAfter = rec.not_after ? new Date(rec.not_after).toLocaleDateString() : "Unknown Date";
-      let issuer = rec.issuer_name || (rec.issuer && rec.issuer.name) || "Unknown Issuer";
+      const from = rec.not_before ? new Date(rec.not_before).toLocaleDateString() : "Unknown";
+      const until = rec.not_after ? new Date(rec.not_after).toLocaleDateString() : "Unknown";
+      let issuer = rec.issuer_name || (rec.issuer && rec.issuer.name) || "Unknown issuer";
       if (issuer.includes("CN=")) issuer = issuer.split("CN=")[1].split(",")[0];
       else if (issuer.includes("O=")) issuer = issuer.split("O=")[1].split(",")[0];
-
-      html += '<div class="consensus" style="margin-bottom:0; padding:12px;">';
-      html +=
-        '<div style="font-weight:bold; font-family:var(--font-mono); margin-bottom:4px; word-break:break-all;">' +
+      rows +=
+        "<tr><td>" +
         esc(subjects) +
-        "</div>";
-      html +=
-        '<div class="small" style="color:var(--text-muted); display:flex; gap:16px; flex-wrap:wrap;">';
-      html += "<span><strong>Issuer:</strong> " + esc(issuer) + "</span>";
-      html += "<span><strong>Valid:</strong> " + esc(notBefore) + " - " + esc(notAfter) + "</span>";
-      html += "</div></div>";
+        '</td><td data-label="Issuer">' +
+        esc(issuer) +
+        '</td><td class="c-date" data-label="From">' +
+        esc(from) +
+        '</td><td class="c-date" data-label="Until">' +
+        esc(until) +
+        "</td></tr>";
     }
-    html += "</div>";
     html +=
-      '<details style="margin-top:16px;">' +
-      '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw SSL JSON</summary>' +
-      '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" data-action="copy" data-value="' +
-      esc(JSON.stringify(sslData, null, 2)) +
-      '">Copy JSON</button></div>' +
-      "<pre>" +
-      esc(JSON.stringify(sslData, null, 2)) +
-      "</pre></details>";
+      '<table class="certs"><caption class="sr-only">Recent certificates</caption><thead><tr>' +
+      '<th scope="col">Names</th><th scope="col" class="c-issuer">Issuer</th>' +
+      '<th scope="col" class="c-date">Valid from</th><th scope="col" class="c-date">Valid until</th>' +
+      "</tr></thead><tbody>" +
+      rows +
+      "</tbody></table>" +
+      rawJson("Raw certificate response", JSON.stringify(sslData, null, 2));
   }
-  const card = document.createElement("div");
-  card.className = "card";
-  card.style.animationDelay = "0s";
-  card.innerHTML = html;
-  container.appendChild(card);
+  slot.innerHTML = html;
+  updateIndex();
 }
 
-function scrollToRecord(type) {
-  const el = document.getElementById("record-" + type);
-  if (el) {
-    const card = el.closest(".card");
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
+function toggleRow(detailId, btn) {
+  const row = document.getElementById(detailId);
+  if (!row) return;
+  const open = row.hidden;
+  row.hidden = !open;
+  btn.setAttribute("aria-expanded", String(open));
 }
 
 // ===== IP MODAL =====
@@ -1606,7 +1552,8 @@ async function openIpModal(ip) {
     if (data.loc) {
       const [lat, lng] = data.loc.split(",").map(parseFloat);
       leafletMap = L.map("map").setView([lat, lng], 10);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      const tiles = isDarkTheme() ? "dark_all" : "light_all";
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/" + tiles + "/{z}/{x}/{y}{r}.png", {
         attribution: "&copy; OpenStreetMap",
       }).addTo(leafletMap);
       L.marker([lat, lng]).addTo(leafletMap);
@@ -1680,16 +1627,15 @@ if (
     path === "/ssl" ||
     path === "/security")
 ) {
-  let titleStr = "IP-Lookup";
-  if (path === "/ipv4") titleStr = "IPv4-Lookup";
-  if (path === "/ipv6") titleStr = "IPv6-Lookup";
-  if (path === "/whois") titleStr = "WHOIS-Lookup";
-  if (path === "/ssl") titleStr = "SSL-Lookup";
-  if (path === "/security") titleStr = "Security-Lookup";
+  let titleStr = "IP lookup";
+  if (path === "/ipv4") titleStr = "IPv4 lookup";
+  if (path === "/ipv6") titleStr = "IPv6 lookup";
+  if (path === "/whois") titleStr = "WHOIS lookup";
+  if (path === "/ssl") titleStr = "Certificate lookup";
+  if (path === "/security") titleStr = "Mail and CAA records";
   document.title = titleStr;
-  document.querySelector("h1").innerText = titleStr;
-  const btn = document.querySelector(".toolbar button");
-  btn.innerText = "Search";
+  document.querySelector("#homeTitle label").textContent = titleStr;
+  const btn = document.querySelector("#homePage .toolbar button");
   const input = document.getElementById("domainHome");
   const go = () => {
     window.location.href = path + "/" + encodeURIComponent(input.value.trim());
@@ -1703,15 +1649,4 @@ if (
 if (domainToLookup) {
   document.getElementById("domainHome").value = domainToLookup;
   triggerLookup("domainHome");
-}
-
-// Initialize Sortable for drag-and-drop
-if (typeof Sortable !== "undefined") {
-  new Sortable(document.getElementById("results"), {
-    animation: 150,
-    handle: ".card-header",
-    ghostClass: "sortable-ghost",
-    delay: 50,
-    delayOnTouchOnly: true,
-  });
 }
