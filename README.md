@@ -24,7 +24,7 @@ $ curl https://<your-worker>/help                 # full reference
 | `GET /abuse/{domain-or-ip}` | `true` if listed on Spamhaus. |
 | `GET /propagated/{domain}` | `true` if all resolvers agree. |
 | `GET /ssl/{domain}` | Certificate history (`?provider=certspotter` or `crt.sh`). |
-| `GET /security/{domain}` | SPF, DMARC, DKIM and CAA posture. |
+| `GET /security/{domain}` | SPF, DMARC and CAA records; `?dkim=<selector>,...` adds DKIM keys. |
 | `GET /history/{domain}` | Historical A records via SecurityTrails (`?apikey=` or `X-API-Key`). |
 | `GET /help`, `/api-docs` | Reference and an interactive playground. |
 | `GET /openapi.json` | OpenAPI 3.1 description of every endpoint, with the deployment's own URL as its server. |

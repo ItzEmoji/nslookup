@@ -317,20 +317,50 @@ export function openApiDocument(origin: string) {
           operationId: "getSecurityPosture",
           tags: ["Domain"],
           summary: "Email and CA security records",
-          description: "SPF, DMARC and CAA records from the first resolver.",
-          parameters: [domainPath(), param("resolvers"), param("preview")],
+          description: [
+            "SPF, DMARC (from `_dmarc.<domain>`) and CAA records from the first resolver, unquoted.",
+            "DKIM keys live at `<selector>._domainkey.<domain>` and selectors can't be listed,",
+            "so pass the ones to check in `dkim`; find one in a message's DKIM-Signature header (`s=`).",
+          ].join(" "),
+          parameters: [
+            domainPath(),
+            {
+              name: "dkim",
+              in: "query",
+              description:
+                "Comma-separated DKIM selectors to look up, at most 10. Letters, digits, `-`, `_` and `.`.",
+              schema: { type: "string" },
+              example: "google,selector1",
+            },
+            param("resolvers"),
+            param("preview"),
+          ],
           responses: {
             "200": {
               description: "Security posture.",
               content: json(ref("SecurityPosture"), {
                 domain: "example.com",
-                spf: '"v=spf1 -all"',
-                dmarc: '"v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s"',
-                dkim: false,
-                hasCAA: false,
+                spf: ["v=spf1 -all"],
+                dmarc: {
+                  record: "v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s",
+                  policy: "reject",
+                  subdomainPolicy: "reject",
+                },
+                dkim: { google: null },
+                caa: [],
               }),
             },
-            "400": badRequest,
+            "400": {
+              description:
+                "The target is missing (plain-text usage) or `dkim` is malformed (JSON error).",
+              content: {
+                ...badRequest.content,
+                ...json(ref("Error"), {
+                  error:
+                    "dkim must be up to 10 comma-separated selectors made of letters, digits, '-', '_' and '.'",
+                }),
+              },
+            },
           },
         },
       },
@@ -564,24 +594,45 @@ export function openApiDocument(origin: string) {
         },
         SecurityPosture: {
           type: "object",
-          required: ["domain", "spf", "dmarc", "dkim", "hasCAA"],
+          required: ["domain", "spf", "dmarc", "dkim", "caa"],
           properties: {
             domain: { type: "string" },
-            spf: nullable({
-              type: "string",
-              description: "The SPF TXT record at the domain, as the resolver returned it.",
-            }),
-            dmarc: nullable({
-              type: "string",
+            spf: {
+              type: "array",
+              items: { type: "string" },
               description:
-                "The DMARC TXT record at `_dmarc.<domain>`, as the resolver returned it.",
-            }),
-            dkim: {
-              type: "boolean",
-              description:
-                "True when a `v=DKIM1` record is published at the domain itself. DKIM keys normally live at `<selector>._domainkey.<domain>`, which can't be discovered, so `false` doesn't mean DKIM is missing.",
+                "Every SPF record at the domain, unquoted. Empty: no SPF. More than one: receivers treat SPF as a permanent error.",
             },
-            hasCAA: { type: "boolean", description: "True when the domain publishes CAA records." },
+            dmarc: nullable(ref("Dmarc")),
+            dkim: {
+              description:
+                "Key record by selector, unquoted; null for a selector with no key. An empty `p=` means the key was revoked. The whole field is null when `dkim` wasn't given.",
+              oneOf: [
+                { type: "object", additionalProperties: nullable({ type: "string" }) },
+                { type: "null" },
+              ],
+            },
+            caa: {
+              type: "array",
+              items: { type: "string" },
+              description: "CAA records. Empty: any certificate authority may issue.",
+            },
+          },
+        },
+        Dmarc: {
+          type: "object",
+          description: "The DMARC record at `_dmarc.<domain>`.",
+          required: ["record", "policy", "subdomainPolicy"],
+          properties: {
+            record: { type: "string", description: "The record, unquoted." },
+            policy: nullable({
+              type: "string",
+              description: "`p=`, lowercased: none (monitoring only), quarantine or reject.",
+            }),
+            subdomainPolicy: nullable({
+              type: "string",
+              description: "`sp=`, lowercased. Null when subdomains inherit `p=`.",
+            }),
           },
         },
       },

@@ -20,7 +20,7 @@ ENDPOINTS
     /ipv6/<domain>          Returns just the raw IPv6 string.
     /whois/<domain>         Returns pure JSON RDAP/WHOIS data.
     /ssl/<domain>           Returns certificate history from CertSpotter.
-    /security/<domain>      Returns security analysis (SPF, DMARC, CAA).
+    /security/<domain>      SPF, DMARC and CAA records. ?dkim=<selector> adds DKIM keys.
     /history/<domain>       Returns historical DNS A records (Requires ?apikey=).
     /openapi.json           OpenAPI 3.1 description, for Postman or client generators.
 

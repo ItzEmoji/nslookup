@@ -333,11 +333,15 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
   <!-- SECURITY ENDPOINT -->
   <div class="endpoint-card" id="security">
     <div class="endpoint-header"><span class="method-badge">GET</span><span class="endpoint-path">/security/{domain}</span></div>
-    <p class="endpoint-desc">Returns security analysis including SPF, DMARC, and CAA presence.</p>
+    <p class="endpoint-desc">SPF, DMARC (from <code>_dmarc.</code>) and CAA records. DKIM keys are looked up for the selectors you give.</p>
     <div class="try-section">
       <div class="param-row">
         <label>Domain</label>
         <input class="param-input" placeholder="e.g. google.com" id="security-domain" value="google.com" oninput="updateAll()">
+      </div>
+      <div class="param-row">
+        <label>DKIM selectors (optional)</label>
+        <input class="param-input" placeholder="e.g. google,selector1" id="security-dkim" oninput="updateAll()">
       </div>
     </div>
     <div class="code-block" style="display:flex; justify-content:space-between; align-items:center; padding-right:80px;">
@@ -415,6 +419,9 @@ function getUrl(id) {
   } else if (id === 'ssl') {
     const provider = document.getElementById('ssl-provider').value;
     if (provider !== 'certspotter') url.searchParams.set('provider', provider);
+  } else if (id === 'security') {
+    const selectors = document.getElementById('security-dkim').value.trim();
+    if (selectors) url.searchParams.set('dkim', selectors);
   } else if (id === 'history') {
     const key = document.getElementById('history-apikey').value.trim();
     if (key) url.searchParams.set('apikey', key);
