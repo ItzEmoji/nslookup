@@ -188,7 +188,7 @@ function showToast(msg, type) {
   t.innerHTML =
     '<span style="display:inline-flex;align-items:center;font-weight:600;">' +
     icon +
-    msg +
+    esc(msg) +
     "</span>";
   c.appendChild(t);
   setTimeout(() => {
@@ -425,10 +425,10 @@ function renderRecordSettings() {
     c.innerHTML +=
       '<div class="selectable-tag ' +
       (active ? "active" : "") +
-      '" onclick="toggleRecord(\'' +
-      r +
-      "')\">" +
-      r +
+      '" data-action="toggle-record" data-value="' +
+      esc(r) +
+      '">' +
+      esc(r) +
       "</div>";
   });
 }
@@ -461,19 +461,19 @@ function renderSettingsResolvers() {
       c.innerHTML +=
         '<div class="resolver-card editing">' +
         '<input type="text" class="settings-input" id="editResName" value="' +
-        name +
+        esc(name) +
         '" placeholder="Name" style="margin-bottom:8px;">' +
         '<textarea class="settings-input" id="editResUrl" rows="2" style="resize:vertical; margin-bottom:12px; font-family:var(--font-mono); font-size:12px;">' +
-        data.url +
+        esc(data.url) +
         "</textarea>" +
         '<div style="display:flex; justify-content:flex-end; gap:8px;">' +
-        '<button class="btn-danger" style="margin-right:auto;" onclick="removeResolver(\'' +
-        name +
-        "')\">Delete</button>" +
+        '<button class="btn-danger" style="margin-right:auto;" data-action="remove-resolver" data-value="' +
+        esc(name) +
+        '">Delete</button>' +
         '<button class="btn-outline" onclick="cancelEditResolver()">Cancel</button>' +
-        "<button onclick=\"saveEditResolver('" +
-        name +
-        "')\">Save</button>" +
+        '<button data-action="save-resolver" data-value="' +
+        esc(name) +
+        '">Save</button>' +
         "</div></div>";
     } else {
       const cardBorder = data.active
@@ -486,23 +486,23 @@ function renderSettingsResolvers() {
         '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
         '<div style="flex:1; min-width:0;">' +
         '<div style="font-weight:600; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">' +
-        name +
-        '<span class="material-symbols-rounded" style="font-size:14px; cursor:pointer; opacity:0.5;" onclick="editResolver(\'' +
-        name +
-        '\')" title="Edit">edit</span>' +
+        esc(name) +
+        '<span class="material-symbols-rounded" style="font-size:14px; cursor:pointer; opacity:0.5;" data-action="edit-resolver" data-value="' +
+        esc(name) +
+        '" title="Edit">edit</span>' +
         "</div>" +
         '<div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="' +
-        data.url +
+        esc(data.url) +
         '">' +
-        data.url +
+        esc(data.url) +
         "</div>" +
         "</div>" +
         '<label class="toggle-switch" style="margin-top:2px;">' +
         '<input type="checkbox" ' +
         isChecked +
-        " onchange=\"toggleResolver('" +
-        name +
-        "')\">" +
+        ' data-action="toggle-resolver" data-value="' +
+        esc(name) +
+        '">' +
         '<span class="toggle-slider"></span>' +
         "</label>" +
         "</div></div>";
@@ -616,8 +616,7 @@ function addToHistory(domain) {
   renderHistory();
 }
 
-function removeFromHistory(domain, e) {
-  e.stopPropagation();
+function removeFromHistory(domain) {
   queryHistory = queryHistory.filter((d) => d !== domain);
   localStorage.setItem("lookup_history", JSON.stringify(queryHistory));
   renderHistory();
@@ -641,13 +640,13 @@ function renderHistory() {
   chips.innerHTML = queryHistory
     .map(
       (d) =>
-        '<div class="history-chip" onclick="quickLookup(\'' +
-        d +
-        "')\">" +
-        d +
-        '<span class="x" onclick="removeFromHistory(\'' +
-        d +
-        "', event)\">✕</span></div>",
+        '<div class="history-chip" data-action="lookup" data-value="' +
+        esc(d) +
+        '">' +
+        esc(d) +
+        '<span class="x" data-action="remove-history" data-value="' +
+        esc(d) +
+        '">✕</span></div>',
     )
     .join("");
 }
@@ -692,7 +691,12 @@ function handleAutocomplete(e, dropdownId) {
   dd.innerHTML = Array.from(suggestions)
     .slice(0, 5)
     .map(
-      (s) => '<div class="autocomplete-item" onclick="quickLookup(\'' + s + "')\">" + s + "</div>",
+      (s) =>
+        '<div class="autocomplete-item" data-action="lookup" data-value="' +
+        esc(s) +
+        '">' +
+        esc(s) +
+        "</div>",
     )
     .join("");
   dd.classList.add("show");
@@ -706,6 +710,42 @@ document.addEventListener("click", (e) => {
 });
 
 // ===== HELPERS =====
+// Escapes text for HTML content and quoted attribute values. Everything that
+// comes from DNS answers, RDAP, CT logs, ipinfo, the URL or localStorage is
+// untrusted and must go through this before it is concatenated into markup.
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Rendered markup carries data in data-* attributes instead of inline
+// onclick="fn('value')" strings, so values never pass through a JS parser.
+const clickActions = {
+  lookup: (value) => quickLookup(value),
+  "remove-history": (value) => removeFromHistory(value),
+  ip: (value) => openIpModal(value),
+  copy: (value, el) => copyToClipboard(value, el),
+  "toggle-record": (value) => toggleRecord(value),
+  "edit-resolver": (value) => editResolver(value),
+  "remove-resolver": (value) => removeResolver(value),
+  "save-resolver": (value) => saveEditResolver(value),
+};
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el || !clickActions[el.dataset.action]) return;
+  clickActions[el.dataset.action](el.dataset.value, el);
+});
+
+document.addEventListener("change", (e) => {
+  const el = e.target.closest('[data-action="toggle-resolver"]');
+  if (el) toggleResolver(el.dataset.value);
+});
+
 function handleEnter(e, inputId) {
   if (e.key === "Enter") triggerLookup(inputId);
 }
@@ -735,10 +775,9 @@ function expandIPv6ToArpa(ip) {
   return nibbles + ".ip6.arpa";
 }
 
-async function copyToClipboard(text, btnEl, isEncoded = false) {
+async function copyToClipboard(text, btnEl) {
   try {
-    const txt = isEncoded ? decodeURIComponent(text) : text;
-    await navigator.clipboard.writeText(txt);
+    await navigator.clipboard.writeText(text);
     const iconCheck =
       '<span class="material-symbols-rounded" style="vertical-align:text-bottom;margin-right:4px;font-size:16px;">check_circle</span>';
     if (btnEl) {
@@ -766,10 +805,13 @@ async function queryDNS(domain, type, resolverName, resolverUrl) {
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), userSettings.advanced.timeout || 5000);
   try {
-    const res = await fetch(resolverUrl + "?name=" + domain + "&type=" + type, {
-      headers: { accept: "application/dns-json" },
-      signal: controller.signal,
-    });
+    const res = await fetch(
+      resolverUrl + "?name=" + encodeURIComponent(domain) + "&type=" + encodeURIComponent(type),
+      {
+        headers: { accept: "application/dns-json" },
+        signal: controller.signal,
+      },
+    );
     clearTimeout(tid);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
@@ -846,7 +888,7 @@ async function triggerLookup(inputId) {
     /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
   const isIPv6 = domain.includes(":") && /^[0-9a-fA-F:]+$/.test(domain);
   const isValidDomain =
-    /^[a-zA-Z0-9¡-￿.-]+.[a-zA-Z0-9¡-￿]{2,}$/.test(domain) || domain === "localhost";
+    /^[a-zA-Z0-9¡-￿.-]+\.[a-zA-Z0-9¡-￿]{2,}$/.test(domain) || domain === "localhost";
 
   if (!ipv4Regex.test(domain) && !isIPv6 && !isValidDomain) {
     showToast("Please enter a valid domain or IP address", "error");
@@ -995,14 +1037,17 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
   const ipv4Regex =
     /\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g;
 
+  function ipLink(ip) {
+    return '<span class="ip-link" data-action="ip" data-value="' + ip + '">' + ip + "</span>";
+  }
+
+  // Escapes first, then links IPs. The patterns only match digits, hex,
+  // dots and colons, so the inserted markup can't pick up untrusted text.
   function linkifyIPs(str) {
-    let linked = str.replace(
-      ipv4Regex,
-      (m) => '<span class="ip-link" onclick="openIpModal(\'' + m + "')\">" + m + "</span>",
-    );
+    let linked = esc(str).replace(ipv4Regex, (m) => ipLink(m));
     linked = linked.replace(
-      /"([0-9a-fA-F:]+:[0-9a-fA-F:]+)"/g,
-      (m, p1) => '"<span class="ip-link" onclick="openIpModal(\'' + p1 + "')\">" + p1 + '</span>"',
+      /&quot;([0-9a-fA-F:]+:[0-9a-fA-F:]+)&quot;/g,
+      (m, p1) => "&quot;" + ipLink(p1) + "&quot;",
     );
     return linked;
   }
@@ -1019,7 +1064,7 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
   // Domain Header
   const hdr = document.createElement("div");
   hdr.className = "domain-header";
-  hdr.innerHTML = "<h2>" + domain + "</h2>";
+  hdr.innerHTML = "<h2>" + esc(domain) + "</h2>";
   container.appendChild(hdr);
 
   // Record Overview Pills removed as requested
@@ -1031,32 +1076,30 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
 
     let html =
       '<div class="card-header"><div class="card-title"><span class="type-badge">' +
-      type +
+      esc(type) +
       "</span> Record</div></div>";
 
     if (section.consensus && section.consensus.values && section.consensus.values.length) {
       html += '<div class="consensus">';
       for (let i = 0; i < section.consensus.values.length; i++) {
         const cv = section.consensus.values[i];
-        let displayVal = cv.value;
-        if (displayVal.match && (displayVal.match(ipv4Regex) || displayVal.includes(":"))) {
-          displayVal =
-            '<span class="ip-link" onclick="openIpModal(\'' +
-            cv.value +
-            "')\">" +
-            cv.value +
-            "</span>";
-        }
+        const value = String(cv.value);
+        // Only values that are entirely an IP address become links; anything
+        // else (TXT with a colon, for instance) stays plain escaped text.
+        const isIp =
+          new RegExp("^" + ipv4Regex.source + "$").test(value) ||
+          /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(value);
+        const displayVal = isIp ? ipLink(value) : esc(value);
         html +=
           '<div class="consensus-row">' +
           '<div class="consensus-value">' +
           displayVal +
           "</div>" +
-          '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\'' +
-          cv.value.replace(/'/g, "\\'") +
-          "', this)\">Copy</button></div>" +
+          '<button class="copy-btn" data-action="copy" data-value="' +
+          esc(value) +
+          '">Copy</button></div>' +
           '<div class="consensus-meta"><span class="check material-symbols-rounded" style="display:inline-flex;align-items:center;margin-right:4px;font-size:16px;">check_circle</span> Confirmed by ' +
-          cv.confirmedBy.join(", ") +
+          esc(cv.confirmedBy.join(", ")) +
           "</div>";
         if (i < section.consensus.values.length - 1)
           html += '<div class="consensus-divider"></div>';
@@ -1076,7 +1119,7 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
         const commonError = sortedErrors[0][0];
         html +=
           '<div style="margin-top: 12px;"><span class="error-badge badge" style="font-size: 13px; padding: 6px 12px;">' +
-          commonError +
+          esc(commonError) +
           "</span></div>";
       } else {
         html += '<div class="small" style="margin-top: 10px; opacity: 0.5;">No records found</div>';
@@ -1085,23 +1128,23 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
 
     html +=
       '<details id="record-' +
-      type +
+      esc(type) +
       '"><summary><span class="material-symbols-rounded chevron">chevron_right</span> Resolver Details</summary>';
     for (const resName in section.resolvers) {
       const rd = section.resolvers[resName];
       html +=
         '<div class="resolver-result"><div class="resolver-header">' +
         '<div class="resolver-name">' +
-        resName +
+        esc(resName) +
         "</div>";
       if (rd.error) {
-        html += '<span class="badge error-badge">' + rd.error + "</span>";
+        html += '<span class="badge error-badge">' + esc(rd.error) + "</span>";
       } else {
         html += '<div style="display:flex;gap:8px;align-items:center;">';
         html +=
-          '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\'' +
-          encodeURIComponent(JSON.stringify(rd.answers, null, 2)) +
-          "', this, true)\">Copy JSON</button>";
+          '<button class="copy-btn" data-action="copy" data-value="' +
+          esc(JSON.stringify(rd.answers, null, 2)) +
+          '">Copy JSON</button>';
         html +=
           '<span class="resolver-timing ' +
           getTimingClass(rd.duration) +
@@ -1139,10 +1182,10 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
         : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') +
       "</div>" +
       (sec.spf
-        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" onclick="copyToClipboard(\'' +
-          sec.spf.replace(/"/g, "").replace(/'/g, "\\'") +
-          '\', this)">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
-          sec.spf.replace(/"/g, "") +
+        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
+          esc(sec.spf.replace(/"/g, "")) +
+          '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
+          esc(sec.spf.replace(/"/g, "")) +
           "</pre>"
         : "") +
       "</div>";
@@ -1157,10 +1200,10 @@ function renderResults(dnsData, whoisData, typesRendered, domain, isReverse) {
         : '<span class="material-symbols-rounded" style="margin-right:4px;color:var(--error);font-size:16px;">cancel</span> Not found') +
       "</div>" +
       (sec.dmarc
-        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" onclick="copyToClipboard(\'' +
-          sec.dmarc.replace(/"/g, "").replace(/'/g, "\\'") +
-          '\', this)">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
-          sec.dmarc.replace(/"/g, "") +
+        ? '<div style="margin-top:8px; display:flex; justify-content:flex-end;"><button class="copy-btn" data-action="copy" data-value="' +
+          esc(sec.dmarc.replace(/"/g, "")) +
+          '">Copy</button></div><pre style="font-size:11px;margin-top:4px;padding:10px;">' +
+          esc(sec.dmarc.replace(/"/g, "")) +
           "</pre>"
         : "") +
       "</div>";
@@ -1198,7 +1241,8 @@ function renderWhoisCard(whoisData, domain) {
     '<div class="card-header"><div class="card-title"><span class="type-badge"><span class="material-symbols-rounded" style="font-size:16px;">contact_page</span></span> WHOIS / RDAP</div></div>';
   if (whoisData.error) {
     if (whoisData.error === "Skipped") return;
-    html += '<div class="small" style="color:var(--text-muted);">' + whoisData.error + "</div>";
+    html +=
+      '<div class="small" style="color:var(--text-muted);">' + esc(whoisData.error) + "</div>";
   } else {
     const name = whoisData.ldhName || whoisData.handle || domain;
     const status = (whoisData.status || []).join(", ") || "Unknown";
@@ -1217,13 +1261,15 @@ function renderWhoisCard(whoisData, domain) {
         : null;
 
     html += '<div class="whois-grid">';
-    html += '<span class="wlabel">Domain</span><span class="wvalue">' + name + "</span>";
+    html += '<span class="wlabel">Domain</span><span class="wvalue">' + esc(name) + "</span>";
     if (registrarName)
       html +=
-        '<span class="wlabel">Registrar</span><span class="wvalue">' + registrarName + "</span>";
+        '<span class="wlabel">Registrar</span><span class="wvalue">' +
+        esc(registrarName) +
+        "</span>";
     html +=
       '<span class="wlabel">Status</span><span class="wvalue" style="font-size:12px;">' +
-      status +
+      esc(status) +
       "</span>";
     if (reg)
       html +=
@@ -1243,7 +1289,7 @@ function renderWhoisCard(whoisData, domain) {
     if (nameservers.length)
       html +=
         '<span class="wlabel">Nameservers</span><span class="wvalue">' +
-        nameservers.join(", ") +
+        esc(nameservers.join(", ")) +
         "</span>";
     html += "</div>";
 
@@ -1252,16 +1298,16 @@ function renderWhoisCard(whoisData, domain) {
       '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw RDAP JSON' +
       (whoisData._latency
         ? ' <span style="font-size:12px;opacity:0.5;font-weight:normal;margin-left:8px;">(' +
-          whoisData._latency +
+          esc(whoisData._latency) +
           "ms)</span>"
         : "") +
       "</summary>" +
       '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\'' +
-      encodeURIComponent(JSON.stringify(whoisData, null, 2)) +
-      "', this, true)\">Copy JSON</button></div>" +
+      '<button class="copy-btn" data-action="copy" data-value="' +
+      esc(JSON.stringify(whoisData, null, 2)) +
+      '">Copy JSON</button></div>' +
       "<pre>" +
-      JSON.stringify(whoisData, null, 2) +
+      esc(JSON.stringify(whoisData, null, 2)) +
       "</pre></details>";
   }
   const card = document.createElement("div");
@@ -1281,7 +1327,7 @@ function renderHistoryCard(historyData, domain) {
   if (historyData.error || !historyData.records || historyData.records.length === 0) {
     html +=
       '<div class="small" style="color:var(--text-muted);">' +
-      (historyData.error || "No historical records found.") +
+      esc(historyData.error || "No historical records found.") +
       "</div>";
   } else {
     html += '<div class="whois-grid">';
@@ -1289,7 +1335,8 @@ function renderHistoryCard(historyData, domain) {
     for (const rec of records) {
       let ip = rec.values ? rec.values.map((v) => v.ip).join(", ") : "Unknown";
       let date = rec.first_seen ? new Date(rec.first_seen).toLocaleDateString() : "Unknown Date";
-      html += '<span class="wlabel">' + date + '</span><span class="wvalue">' + ip + "</span>";
+      html +=
+        '<span class="wlabel">' + esc(date) + '</span><span class="wvalue">' + esc(ip) + "</span>";
     }
     html += "</div>";
 
@@ -1297,11 +1344,11 @@ function renderHistoryCard(historyData, domain) {
       '<details style="margin-top:16px;">' +
       '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw History JSON</summary>' +
       '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\'' +
-      encodeURIComponent(JSON.stringify(historyData, null, 2)) +
-      "', this, true)\">Copy JSON</button></div>" +
+      '<button class="copy-btn" data-action="copy" data-value="' +
+      esc(JSON.stringify(historyData, null, 2)) +
+      '">Copy JSON</button></div>' +
       "<pre>" +
-      JSON.stringify(historyData, null, 2) +
+      esc(JSON.stringify(historyData, null, 2)) +
       "</pre></details>";
   }
   const card = document.createElement("div");
@@ -1321,7 +1368,7 @@ function renderSslCard(sslData, domain) {
   if (sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
     html +=
       '<div class="small" style="color:var(--text-muted);">' +
-      (sslData.error || "No SSL certificates found.") +
+      esc(sslData.error || "No SSL certificates found.") +
       "</div>";
   } else {
     html += '<div style="display:grid; gap:12px;">';
@@ -1341,12 +1388,12 @@ function renderSslCard(sslData, domain) {
       html += '<div class="consensus" style="margin-bottom:0; padding:12px;">';
       html +=
         '<div style="font-weight:bold; font-family:var(--font-mono); margin-bottom:4px; word-break:break-all;">' +
-        subjects +
+        esc(subjects) +
         "</div>";
       html +=
         '<div class="small" style="color:var(--text-muted); display:flex; gap:16px; flex-wrap:wrap;">';
-      html += "<span><strong>Issuer:</strong> " + issuer + "</span>";
-      html += "<span><strong>Valid:</strong> " + notBefore + " - " + notAfter + "</span>";
+      html += "<span><strong>Issuer:</strong> " + esc(issuer) + "</span>";
+      html += "<span><strong>Valid:</strong> " + esc(notBefore) + " - " + esc(notAfter) + "</span>";
       html += "</div></div>";
     }
     html += "</div>";
@@ -1354,11 +1401,11 @@ function renderSslCard(sslData, domain) {
       '<details style="margin-top:16px;">' +
       '<summary><span class="material-symbols-rounded chevron">chevron_right</span> Raw SSL JSON</summary>' +
       '<div style="display:flex; justify-content:flex-end; margin-bottom:-20px; position:relative; z-index:10; padding-right:10px; margin-top:10px;">' +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(\'' +
-      encodeURIComponent(JSON.stringify(sslData, null, 2)) +
-      "', this, true)\">Copy JSON</button></div>" +
+      '<button class="copy-btn" data-action="copy" data-value="' +
+      esc(JSON.stringify(sslData, null, 2)) +
+      '">Copy JSON</button></div>' +
       "<pre>" +
-      JSON.stringify(sslData, null, 2) +
+      esc(JSON.stringify(sslData, null, 2)) +
       "</pre></details>";
   }
   const card = document.createElement("div");
@@ -1386,28 +1433,24 @@ async function openIpModal(ip) {
     leafletMap = null;
   }
   try {
-    const res = await fetch("https://ipinfo.io/" + ip + "/json");
+    const res = await fetch("https://ipinfo.io/" + encodeURIComponent(ip) + "/json");
     const data = await res.json();
     document.getElementById("modalDetails").innerHTML =
       '<div class="modal-detail-grid">' +
       '<span class="label">Organization</span><span class="value">' +
-      (data.org || "Unknown") +
+      esc(data.org || "Unknown") +
       "</span>" +
       '<span class="label">Location</span><span class="value">' +
-      (data.city || "?") +
-      ", " +
-      (data.region || "?") +
-      ", " +
-      (data.country || "?") +
+      esc((data.city || "?") + ", " + (data.region || "?") + ", " + (data.country || "?")) +
       "</span>" +
       '<span class="label">Hostname</span><span class="value">' +
-      (data.hostname || "N/A") +
+      esc(data.hostname || "N/A") +
       "</span>" +
       '<span class="label">Timezone</span><span class="value">' +
-      (data.timezone || "Unknown") +
+      esc(data.timezone || "Unknown") +
       "</span>" +
       '<span class="label">Postal</span><span class="value">' +
-      (data.postal || "N/A") +
+      esc(data.postal || "N/A") +
       "</span>" +
       "</div>";
     if (data.loc) {
@@ -1497,12 +1540,13 @@ if (
   document.querySelector("h1").innerText = titleStr;
   const btn = document.querySelector(".toolbar button");
   btn.innerText = "Search";
-  btn.onclick = () => {
-    window.location.href = path + "/" + document.getElementById("domainHome").value;
-  };
   const input = document.getElementById("domainHome");
+  const go = () => {
+    window.location.href = path + "/" + encodeURIComponent(input.value.trim());
+  };
+  btn.onclick = go;
   input.onkeydown = (e) => {
-    if (e.key === "Enter") window.location.href = path + "/" + input.value;
+    if (e.key === "Enter") go();
   };
 }
 
