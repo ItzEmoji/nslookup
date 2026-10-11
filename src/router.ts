@@ -8,7 +8,6 @@ import { history } from "./routes/history.ts";
 import { clientIp, lookup } from "./routes/lookup.ts";
 import { apiDocs, help } from "./routes/pages.ts";
 import { propagated } from "./routes/propagated.ts";
-import { proxyDns } from "./routes/proxy-dns.ts";
 import { security } from "./routes/security.ts";
 import { ssl } from "./routes/ssl.ts";
 import { whois } from "./routes/whois.ts";
@@ -69,7 +68,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (pathname === "/openapi.json") return json(openApiDocument(ctx.url.origin), { space: 2 });
   if (!ctx.wantsApi) return serveApp(ctx);
 
-  if (pathname === "/proxy-dns") return proxyDns(ctx);
   const route = apiRouteFor(pathname);
   if (route) return route(ctx);
 

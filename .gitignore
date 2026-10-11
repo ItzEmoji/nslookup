@@ -5,3 +5,6 @@ dist/
 !.dev.vars.example
 *.log
 .DS_Store
+
+# Local design-review state from the Impeccable skill
+.impeccable/

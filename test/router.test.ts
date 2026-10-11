@@ -149,6 +149,13 @@ describe("API clients", () => {
     },
   );
 
+  test("/proxy-dns no longer forwards requests to arbitrary URLs", async () => {
+    const fake = mockUpstreams();
+    const res = await get("/proxy-dns?url=https://internal.test/q&name=example.com&type=A");
+    expect(res.status).toBe(400);
+    expect(requestedUrls(fake)).toEqual([]);
+  });
+
   test("invalid targets are rejected", async () => {
     const res = await get("/not_a_domain");
     expect(res.status).toBe(400);
