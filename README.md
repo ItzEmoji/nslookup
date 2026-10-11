@@ -76,5 +76,5 @@ How to contribute, commit and release: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/) on `main`.
-Merging a release pull request tags the version, publishes the GitHub release
-with the built bundle, and deploys it. See [CHANGELOG.md](CHANGELOG.md).
+Merging a release pull request tags the version and publishes the GitHub
+release with the built bundle. See [CHANGELOG.md](CHANGELOG.md).

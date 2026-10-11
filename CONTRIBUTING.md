@@ -92,11 +92,15 @@ Nothing to do by hand:
    (`release(main): x.y.z`) with the next version and changelog.
 2. Squash-merging that pull request tags `vx.y.z`, publishes the GitHub
    release with the built bundle attached (with a build provenance
-   attestation), and deploys the worker to Cloudflare.
+   attestation).
 
-The workflows need these repository secrets:
+The workflows don't deploy: Cloudflare's Git integration builds and deploys
+the worker.
 
-| Secret | Used for |
-| --- | --- |
-| `APP_ID`, `APP_PRIVATE_KEY` | GitHub App token for release-please, so its pull requests trigger CI. |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Deploying the worker (the `production` environment). |
+The release workflow authenticates as the `itzemoji-ci` GitHub App, so its
+release pull requests trigger CI. It needs:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `APP_CLIENT_ID` | Repository variable | The App's client ID. |
+| `APP_PRIVATE_KEY` | Repository secret | A private key of the App. |
