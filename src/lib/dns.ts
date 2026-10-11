@@ -91,19 +91,48 @@ export async function collectAnswerData(
   return [...new Set(results.flatMap((result) => result.answers.map((answer) => answer.data)))];
 }
 
-/** The answer value returned by the most resolvers, or null when nobody answered. */
-export function buildConsensus(results: ResolverResult[]): Consensus | null {
-  const votes = new Map<string, string[]>();
+const TXT_TYPE_CODES = new Set([16, 99]); // TXT, SPF
+const QUOTED_STRINGS = /^"(?:[^"\\]|\\.)*"(?:\s+"(?:[^"\\]|\\.)*")*$/;
+
+/**
+ * The comparable form of an answer. Resolvers format the same record
+ * differently: Cloudflare quotes TXT strings ("v=spf1 -all") where Google
+ * returns them bare and joined, and names may or may not carry a trailing
+ * dot or uppercase letters. Without this, identical records look like a split.
+ */
+export function normalizeAnswer(answer: DnsAnswer, type?: string): string {
+  const data = answer.data.trim();
+  const isTxt =
+    type === "TXT" ||
+    type === "SPF" ||
+    (answer.type !== undefined && TXT_TYPE_CODES.has(answer.type));
+  if (isTxt) {
+    if (!QUOTED_STRINGS.test(data)) return data;
+    return [...data.matchAll(/"((?:[^"\\]|\\.)*)"/g)]
+      .map((match) => (match[1] ?? "").replace(/\\(.)/g, "$1"))
+      .join("");
+  }
+  // Lowercase, and drop the trailing dot of each name ("10 MX.Example.com." -> "10 mx.example.com").
+  return data.toLowerCase().replace(/(\S)\.(?=\s|$)/g, "$1");
+}
+
+/**
+ * The answer value returned by the most resolvers, or null when nobody answered.
+ * Answers are compared in normalized form; `value` is the first resolver's original text.
+ */
+export function buildConsensus(results: ResolverResult[], type?: string): Consensus | null {
+  const votes = new Map<string, Consensus>();
   for (const result of results) {
     for (const answer of result.answers) {
-      const voters = votes.get(answer.data) ?? [];
-      voters.push(result.resolver);
-      votes.set(answer.data, voters);
+      const key = normalizeAnswer(answer, type);
+      const entry = votes.get(key) ?? { value: answer.data, confirmedBy: [] };
+      if (!entry.confirmedBy.includes(result.resolver)) entry.confirmedBy.push(result.resolver);
+      votes.set(key, entry);
     }
   }
   let best: Consensus | null = null;
-  for (const [value, confirmedBy] of votes) {
-    if (!best || confirmedBy.length > best.confirmedBy.length) best = { value, confirmedBy };
+  for (const entry of votes.values()) {
+    if (!best || entry.confirmedBy.length > best.confirmedBy.length) best = entry;
   }
   return best;
 }
@@ -123,10 +152,7 @@ export function isPropagated(
     if (!result) continue;
 
     const answerSets = Object.values(result.resolvers).map((answers) =>
-      answers
-        .map((answer) => answer.data)
-        .sort()
-        .join("|"),
+      [...new Set(answers.map((answer) => normalizeAnswer(answer, type)))].sort().join("|"),
     );
     if (answerSets.length < 2) continue;
 

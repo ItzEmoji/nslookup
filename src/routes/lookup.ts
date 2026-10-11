@@ -49,7 +49,7 @@ export async function lookup(ctx: RequestContext, target: string): Promise<Respo
 
   const dns: Record<string, TypeLookup> = {};
   for (const [type, results] of Object.entries(raw)) {
-    dns[type] = { consensus: buildConsensus(results), resolvers: answersByResolver(results) };
+    dns[type] = { consensus: buildConsensus(results, type), resolvers: answersByResolver(results) };
   }
 
   return json(

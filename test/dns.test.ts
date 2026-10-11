@@ -4,6 +4,7 @@ import {
   collectAnswerData,
   type DnsAnswer,
   isPropagated,
+  normalizeAnswer,
   queryResolver,
   type ResolverResult,
 } from "../src/lib/dns.ts";
@@ -83,6 +84,39 @@ describe("buildConsensus", () => {
   test("is null when nobody answered", () => {
     expect(buildConsensus([result("A"), result("B")])).toBeNull();
   });
+
+  test("counts quoted and bare TXT strings as the same answer", () => {
+    expect(
+      buildConsensus(
+        [result("Cloudflare", '"v=spf1 -all"'), result("Google", "v=spf1 -all")],
+        "TXT",
+      ),
+    ).toEqual({ value: '"v=spf1 -all"', confirmedBy: ["Cloudflare", "Google"] });
+  });
+});
+
+describe("normalizeAnswer", () => {
+  test.each([
+    ['"v=spf1 -all"', "v=spf1 -all"],
+    ["v=spf1 -all", "v=spf1 -all"],
+    ['"v=DKIM1; p=abc" "def"', "v=DKIM1; p=abcdef"],
+    ['"say \\"hi\\""', 'say "hi"'],
+  ])("joins and unquotes TXT %s", (data, expected) => {
+    expect(normalizeAnswer({ data }, "TXT")).toBe(expected);
+  });
+
+  test("recognizes TXT by the answer's numeric type too", () => {
+    expect(normalizeAnswer({ data: '"Hello"', type: 16 })).toBe("Hello");
+  });
+
+  test.each([
+    ["10 MX.Example.com.", "10 mx.example.com"],
+    ["ns1.example.com.", "ns1.example.com"],
+    ["0 .", "0 ."],
+    ["2001:DB8::1", "2001:db8::1"],
+  ])("lowercases names and drops trailing dots: %s", (data, expected) => {
+    expect(normalizeAnswer({ data }, "MX")).toBe(expected);
+  });
 });
 
 describe("isPropagated", () => {
@@ -110,6 +144,14 @@ describe("isPropagated", () => {
   test("false when a resolver has no address record yet", () => {
     const results = { A: typeResult({ A: ["1.1.1.1"], B: [] }) };
     expect(isPropagated(results, ["A"])).toBe(false);
+  });
+
+  test("ignores formatting differences between resolvers", () => {
+    const results = {
+      TXT: typeResult({ Cloudflare: ['"v=spf1 -all"'], Google: ["v=spf1 -all"] }),
+      NS: typeResult({ Cloudflare: ["A.iana-servers.net."], Google: ["a.iana-servers.net"] }),
+    };
+    expect(isPropagated(results, ["TXT", "NS"])).toBe(true);
   });
 
   test("a single resolver can't disagree with itself", () => {
