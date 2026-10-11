@@ -45,7 +45,7 @@ Import `https://<your-worker>/openapi.json` into Postman, Insomnia or Bruno,
 or generate a client from it:
 
 ```sh
-npx @openapitools/openapi-generator-cli generate \
+bunx @openapitools/openapi-generator-cli generate \
   -i https://<your-worker>/openapi.json -g typescript-fetch -o ./nslookup-client
 ```
 
