@@ -20,20 +20,16 @@ export function isCliClient(request: Request): boolean {
 }
 
 /**
- * The same URL serves the web app to browsers and JSON to everything else,
- * so the client is classified from its request headers.
+ * The same URL serves the web app to browsers and the API to everything else,
+ * so the client is classified from its request headers. Only a browser page
+ * navigation gets the app; scripts, HTTP libraries, generated clients and
+ * Postman get the API without having to send a particular Accept header.
  */
 function wantsApiResponse(request: Request): boolean {
   const fetchMode = request.headers.get("sec-fetch-mode");
   const accept = request.headers.get("accept");
   const isNavigation = fetchMode === "navigate" || accept?.includes("text/html") === true;
-  if (isNavigation) return false;
-  return (
-    isCliClient(request) ||
-    fetchMode === "cors" ||
-    accept?.includes("application/json") === true ||
-    request.headers.get("referer")?.includes("/api-docs") === true
-  );
+  return !isNavigation;
 }
 
 function resolversFrom(url: URL): Resolvers {

@@ -18,9 +18,9 @@ Request
 
 **Browser or API client?** The same URL serves both, so `src/context.ts`
 decides from the request headers. A navigation (`Sec-Fetch-Mode: navigate`
-or `Accept: text/html`) gets the web app. `curl`/`wget`/`httpie`, a
-cross-origin `fetch()`, an `Accept: application/json` header, or a request
-from the API docs page gets the API.
+or `Accept: text/html`) gets the web app. Every other request gets the API:
+`curl`, `fetch()`, HTTP libraries, Postman and clients generated from
+`/openapi.json` need no particular headers.
 
 ## Layout
 

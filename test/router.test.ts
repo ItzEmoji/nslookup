@@ -77,6 +77,16 @@ describe("API clients", () => {
     expect(await res.text()).toContain(`curl ${ORIGIN}/example.com`);
   });
 
+  test.each([
+    ["Postman", { "user-agent": "PostmanRuntime/7.43.0", accept: "*/*" }],
+    ["Python requests", { "user-agent": "python-requests/2.32.3", accept: "*/*" }],
+    ["a client with no headers at all", {}],
+  ])("%s gets the API, not the web app", async (_, headers) => {
+    mockUpstreams();
+    const res = await get("/ipv4/example.com", headers);
+    expect(await res.text()).toBe("A-record\n");
+  });
+
   test("fetch() from another site counts as an API client", async () => {
     mockUpstreams();
     const res = await get("/ipv4/example.com", { "sec-fetch-mode": "cors" });
