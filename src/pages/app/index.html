@@ -43,22 +43,18 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.7 4.3L20 15.5M20 20v-4.5h-4.5"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 </svg>
 
-<!-- Top band -->
+<!-- Top bar -->
 <header class="topbar">
   <a class="brand" href="/" onclick="goHome(); return false;" title="New lookup">
     <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#f38020"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="5.5"/><path d="M19 19l-3.8-3.8"/></g></svg>
     <span>nslookup</span>
   </a>
   <span class="topbar-sep" aria-hidden="true"></span>
-  <div class="topsearch" role="search">
-    <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
-    <input id="domainTop" class="search" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Look up a domain or IP address" placeholder="Domain or IP address" onkeydown="handleEnter(event, 'domainTop')" oninput="handleAutocomplete(event, 'topDropdown')" />
-    <kbd class="topsearch-kbd" aria-hidden="true">Ctrl K</kbd>
-    <div id="topDropdown" class="autocomplete-dropdown" role="listbox"></div>
-  </div>
+  <div class="search-slot-top" id="searchSlotTop"></div>
   <nav class="topbar-links" aria-label="Documentation">
     <a href="/help">CLI</a>
     <a href="/api-docs">API</a>
@@ -76,30 +72,23 @@
 
 <main class="app-main" id="main">
 
-  <!-- ===== NEW LOOKUP ===== -->
-  <section class="view page" id="homePage" aria-labelledby="homeTitle">
-    <div class="query-block">
-      <h1 id="homeTitle"><label for="domainHome">Look up a domain or IP address</label></h1>
-      <div class="query">
-        <div class="query-field">
-          <input id="domainHome" class="search mono" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="handleEnter(event, 'domainHome')" oninput="handleAutocomplete(event, 'homeDropdown')" />
-          <div id="homeDropdown" class="autocomplete-dropdown" role="listbox"></div>
-        </div>
-        <button class="btn btn-primary btn-lg" id="homeLookupBtn" onclick="triggerLookup('domainHome')">Look up</button>
-      </div>
-      <dl class="cells" id="homeConditions"></dl>
+  <!-- ===== START PAGE =====
+       Only the search. The same form moves into the top bar once a lookup runs. -->
+  <section class="view home" id="homePage" aria-labelledby="homeTitle">
+    <h1 class="home-logo" id="homeTitle">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#f38020"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="5.5"/><path d="M19 19l-3.8-3.8"/></g></svg>
+      nslookup
+    </h1>
+    <p class="home-tag" id="homeTag"></p>
+    <div class="search-slot-home" id="searchSlotHome">
+      <form class="search-box search-lg" id="search" role="search" onsubmit="submitSearch(event)" autocomplete="off">
+        <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="q" name="q" type="text" placeholder="Domain or IP address" aria-label="Domain or IP address" role="combobox" aria-autocomplete="list" aria-controls="suggest" aria-expanded="false" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="onSearchKey(event)" />
+        <button type="button" class="icon-btn search-clear" id="searchClear" hidden onclick="clearSearchField()" aria-label="Clear the search field" title="Clear"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+        <kbd class="search-kbd" aria-hidden="true">Ctrl K</kbd>
+        <div class="suggest" id="suggest" role="listbox" aria-label="Suggestions" hidden></div>
+      </form>
     </div>
-
-    <section class="card" id="historySection" aria-labelledby="recentTitle">
-      <div class="card-head">
-        <h2 id="recentTitle">Recent</h2>
-        <span class="card-meta">
-          <span id="historyCount"></span>
-          <button class="link-btn hidden" id="clearHistoryBtn" onclick="clearHistory()">Clear</button>
-        </span>
-      </div>
-      <div id="historyChips"></div>
-    </section>
   </section>
 
   <!-- ===== RESULTS ===== -->
@@ -268,10 +257,19 @@
       </div>
       <div class="set-row">
         <div class="set-text">
-          <strong>Clear history</strong>
-          <span>Remove all recent lookups from this browser.</span>
+          <strong>Remember recent lookups</strong>
+          <span>Show them under the search field when you click into it.</span>
         </div>
-        <div class="set-control"><button class="btn btn-danger" onclick="clearHistory()">Clear history</button></div>
+        <div class="set-control">
+          <label class="toggle-switch"><input type="checkbox" id="setRecent" onchange="toggleSetting('features','rememberRecent',this.checked)" aria-label="Remember recent lookups"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Delete recent lookups</strong>
+          <span>Remove every saved lookup from this browser.</span>
+        </div>
+        <div class="set-control"><button class="btn btn-danger" onclick="clearHistory(true)"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete all</button></div>
       </div>
       <div class="set-row">
         <div class="set-text">
@@ -314,7 +312,9 @@
       <button class="icon-btn" onclick="closeModal('helpModal')" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <dl class="kv modal-kv">
-      <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Focus the lookup field</dd></div>
+      <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>/</kbd></dt><dd>Focus the search field</dd></div>
+      <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Move through suggestions</dd></div>
+      <div><dt><kbd>Shift</kbd> <kbd>Del</kbd></dt><dd>Delete the selected recent lookup</dd></div>
       <div><dt><kbd>Enter</kbd></dt><dd>Run the lookup</dd></div>
       <div><dt><kbd>D</kbd></dt><dd>Show only disagreements</dd></div>
       <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Form, Zone or JSON view</dd></div>

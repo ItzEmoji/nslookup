@@ -12,47 +12,184 @@ body.no-animations *::after {
   animation: none !important;
 }
 
-/* ===== Top band additions ===== */
-.topsearch-kbd {
-  position: absolute;
-  right: 8px;
-  color: var(--text-3);
-  pointer-events: none;
+/* ===== Search =====
+   One field. It sits in the middle of the start page and moves into the top
+   bar once a lookup runs; its suggestions hang from it like a search engine's. */
+.search-slot-top {
+  flex: 0 1 540px;
+  min-width: 0;
 }
-.topsearch input:focus ~ .topsearch-kbd,
-.topsearch input:not(:placeholder-shown) ~ .topsearch-kbd {
-  display: none;
-}
-.topbar .icon-btn[aria-current="page"] {
-  background: var(--ink-tint);
-  color: var(--ink);
-}
-
-.autocomplete-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 60;
-  display: none;
-  padding: 4px 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 38px;
+  padding: 0 6px 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 19px;
   background: var(--surface);
-  box-shadow: var(--shadow-pop);
+  transition:
+    box-shadow 120ms,
+    border-color 120ms;
+}
+.search-box:hover,
+.search-box:focus-within {
+  box-shadow: 0 1px 6px rgba(20, 20, 30, 0.14);
+}
+.search-icon {
+  color: var(--text-3);
+}
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.search-box input::placeholder {
+  color: var(--text-3);
+}
+.search-clear {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--text-3);
+}
+.search-clear:hover {
   color: var(--text);
 }
-.autocomplete-dropdown.show {
-  display: block;
+.search-kbd {
+  margin-right: 6px;
+  pointer-events: none;
 }
-.autocomplete-item {
-  padding: 7px 12px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+.search-box input:focus ~ .search-kbd,
+.search-box input:not(:placeholder-shown) ~ .search-kbd,
+.search-lg .search-kbd {
+  display: none;
+}
+.search-lg {
+  height: 52px;
+  padding: 0 10px 0 20px;
+  border-radius: 26px;
+  box-shadow: 0 1px 4px rgba(20, 20, 30, 0.06);
+}
+.search-lg input {
+  padding: 0 12px;
+  font-size: 17px;
+}
+.search-lg .search-icon {
+  width: 19px;
+  height: 19px;
+}
+
+/* Open: the box and its list read as one card. */
+.search-box.open {
+  border-color: var(--border);
+  border-bottom-color: transparent;
+  border-radius: 19px 19px 0 0;
+  box-shadow: 0 2px 10px rgba(20, 20, 30, 0.16);
+}
+.search-lg.open {
+  border-radius: 26px 26px 0 0;
+}
+.suggest {
+  position: absolute;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  z-index: 60;
+  padding: 0 0 8px;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 19px 19px;
+  background: var(--surface);
+  box-shadow: 0 10px 16px rgba(20, 20, 30, 0.14);
+  color: var(--text);
+}
+.search-lg .suggest {
+  border-radius: 0 0 26px 26px;
+}
+.suggest::before {
+  content: "";
+  display: block;
+  margin: 0 16px 4px;
+  border-top: 1px solid var(--border);
+}
+.suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 6px 20px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.suggest-head .link-btn {
+  font-size: 12.5px;
+}
+.suggest-list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+}
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  margin: 0 8px;
+  padding: 0 4px 0 12px;
+  border-radius: 19px;
   cursor: pointer;
 }
-.autocomplete-item:hover {
+.suggest-item:hover,
+.suggest-item[aria-selected="true"] {
   background: var(--hover);
+}
+.suggest-item > .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-3);
+}
+.suggest-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-kind {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.suggest-del {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--text-3);
+  opacity: 0;
+}
+.suggest-item:hover .suggest-del,
+.suggest-item[aria-selected="true"] .suggest-del,
+.suggest-del:focus-visible {
+  opacity: 1;
+}
+.suggest-del:hover {
+  background: var(--fail-soft);
+  color: var(--fail);
+}
+@media (hover: none) {
+  .suggest-del {
+    opacity: 1;
+  }
 }
 
 /* ===== Fact cells: a white box split into labelled cells ===== */
@@ -118,102 +255,47 @@ body.no-animations *::after {
   color: var(--fail);
 }
 
-/* ===== New lookup ===== */
-.query-block {
-  padding-top: 44px;
+/* ===== Start page: the logo and the search, nothing else ===== */
+body.on-home .topbar {
+  border-bottom-color: transparent;
+  background: transparent;
 }
-.query-block h1 {
-  margin-bottom: 14px;
-  color: var(--text);
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+body.on-home .brand,
+body.on-home .topbar-sep {
+  visibility: hidden;
 }
-.query {
+.home {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100vh - var(--topbar-h) - 120px);
+  padding-top: 17vh;
 }
-.query-field {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-}
-#domainHome {
-  width: 100%;
-  height: 50px;
-  padding: 0 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
+.home-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 19px;
+  font-size: 46px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
-#domainHome::placeholder {
-  color: var(--text-3);
-  opacity: 0.7;
+.home-logo svg {
+  width: 54px;
+  height: 54px;
 }
-#domainHome:focus {
-  outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 3px var(--ink-tint);
-}
-.query .btn-lg {
-  height: 50px;
-  padding: 0 24px;
+.home-tag {
+  margin-top: 10px;
+  color: var(--text-2);
   font-size: 14px;
 }
-#homeConditions {
-  margin-top: 18px;
+.home-tag:empty {
+  display: none;
 }
-.opt {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: var(--text-3);
-}
-.opt.on {
-  color: var(--text);
-}
-.opt .icon {
-  width: 13px;
-  height: 13px;
-  color: var(--ok);
-  stroke-width: 2.2;
-}
-
-.history-table .h-name {
-  width: 50%;
-}
-.history-table .h-name .link-btn {
-  font-weight: 400;
-  font-size: 13px;
-}
-.history-table .h-kind {
-  color: var(--text-2);
-  font-size: 12.5px;
-}
-.history-table .h-actions {
-  width: 1%;
-  padding-top: 3px;
-  padding-bottom: 3px;
-  text-align: right;
-}
-.history-table .icon-btn {
-  width: 26px;
-  height: 26px;
-  color: var(--text-3);
-}
-.history-table .icon-btn:hover {
-  color: var(--fail);
-}
-.empty-line {
-  padding: 14px 16px;
-  color: var(--text-2);
-}
-.empty-line .link-btn {
-  font-weight: 400;
+.search-slot-home {
+  width: min(640px, 100%);
+  margin-top: 32px;
 }
 
 /* ===== Results header ===== */
@@ -1089,17 +1171,21 @@ body.no-animations *::after {
   .brand span {
     display: none;
   }
-  .topsearch {
+  .search-slot-top {
     flex: 1;
   }
-  .topsearch-kbd {
+  .search-kbd {
     display: none;
   }
-  .query-block {
-    padding-top: 28px;
+  .home {
+    padding-top: 12vh;
   }
-  .query-block h1 {
-    font-size: 24px;
+  .home-logo {
+    font-size: 36px;
+  }
+  .home-logo svg {
+    width: 42px;
+    height: 42px;
   }
   .zone-name {
     font-size: 26px;
@@ -1112,16 +1198,6 @@ body.no-animations *::after {
 @media (max-width: 640px) {
   .topbar-links {
     display: none;
-  }
-  .query {
-    flex-direction: column;
-  }
-  #domainHome {
-    height: 48px;
-    font-size: 18px;
-  }
-  .query .btn-lg {
-    height: 44px;
   }
   .cells {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1340,4 +1416,13 @@ body.no-animations *::after {
   .register td.c-res {
     order: 3;
   }
+}
+.search-clear[hidden] {
+  display: none;
+}
+/* Keep the kind column aligned on rows without a delete button. */
+.suggest-item:not(:has(.suggest-del))::after {
+  content: "";
+  width: 30px;
+  flex: none;
 }

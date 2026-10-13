@@ -9,7 +9,13 @@ const defaultSettings = {
     Cloudflare: { url: "https://cloudflare-dns.com/dns-query", active: true },
     Google: { url: "https://dns.google/resolve", active: true },
   },
-  features: { animations: true, enableWhois: false, enableSecurity: true, enableSsl: false },
+  features: {
+    animations: true,
+    enableWhois: false,
+    enableSecurity: true,
+    enableSsl: false,
+    rememberRecent: true,
+  },
   advanced: {
     rdapServer: "https://rdap.org/domain/",
     timeout: 5000,
@@ -54,12 +60,7 @@ window.addEventListener("scroll", () => {
 document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === "k") {
     e.preventDefault();
-    const input =
-      currentView === "home"
-        ? document.getElementById("domainHome")
-        : document.getElementById("domainTop");
-    input.focus();
-    input.select();
+    focusSearch();
   }
   if ((e.ctrlKey || e.metaKey) && e.key === ",") {
     e.preventDefault();
@@ -75,6 +76,10 @@ document.addEventListener("keydown", (e) => {
   const typing = e.target.closest && e.target.closest("input, textarea, select, [contenteditable]");
   if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === "?") openShortcuts();
+  if (e.key === "/") {
+    e.preventDefault();
+    focusSearch();
+  }
   if (currentView !== "results" || !document.getElementById("viewSwitch")) return;
   if (e.key === "d" || e.key === "D") {
     const box = document.getElementById("onlyDiff");
@@ -96,6 +101,7 @@ function showView(name) {
   for (const [view, id] of Object.entries(views)) {
     document.getElementById(id).classList.toggle("hidden", view !== name);
   }
+  placeSearch(name === "home" ? "home" : "top");
   for (const el of document.querySelectorAll("[data-nav]")) {
     if (el.dataset.nav === name) el.setAttribute("aria-current", "page");
     else el.removeAttribute("aria-current");
@@ -187,9 +193,7 @@ function loadSettings() {
   toggleBodyAnimations();
   renderRecordSettings();
   renderSettingsResolvers();
-  renderHistory();
-  renderHomeNote();
-  renderHomeChecks();
+  document.getElementById("setRecent").checked = userSettings.features.rememberRecent !== false;
 }
 
 function saveSettings() {
@@ -199,13 +203,11 @@ function toggleSetting(cat, key, val) {
   userSettings[cat][key] = val;
   saveSettings();
   if (key === "animations") toggleBodyAnimations();
-  renderHomeChecks();
 }
 function updateSettingText(cat, key, val) {
   if (val !== undefined && val !== "") {
     userSettings[cat][key] = val;
     saveSettings();
-    renderHomeChecks();
   }
 }
 function toggleBodyAnimations() {
@@ -250,68 +252,6 @@ function curlFor(domain) {
   return "curl " + location.origin + "/" + domain;
 }
 
-function renderHomeNote() {
-  renderHomeChecks();
-}
-
-// The cells under the lookup field: what the next lookup will ask, and the
-// same lookup as a command. They reflect the current settings.
-function renderHomeChecks() {
-  const el = document.getElementById("homeConditions");
-  if (!el) return;
-  const active = Object.entries(userSettings.resolvers)
-    .filter(([_, d]) => d.active)
-    .map(([name]) => name);
-  const f = userSettings.features;
-  const provider = userSettings.advanced.sslProvider === "crt.sh" ? "crt.sh" : "CertSpotter";
-  const extra = [
-    ["Mail", f.enableSecurity !== false, "SPF, DMARC, DKIM, CAA"],
-    ["Registry", f.enableWhois, "RDAP via " + rdapSource()],
-    ["Certificates", f.enableSsl === true, "CT logs via " + provider],
-  ];
-  const cell = (label, value, cls) =>
-    '<div class="cell' +
-    (cls ? " " + cls : "") +
-    '"><dt class="label">' +
-    label +
-    "</dt><dd>" +
-    value +
-    "</dd></div>";
-  const curl = curlFor("example.com");
-  el.innerHTML =
-    cell(
-      "Resolvers",
-      active.length
-        ? esc(active.join(", "))
-        : '<span class="txt-fail">None active</span> <button class="link-btn" onclick="openSettings()">Turn one on</button>',
-    ) +
-    cell(
-      "Record types",
-      '<span class="mono">' + esc(userSettings.defaultRecords.join(" ")) + "</span>",
-    ) +
-    cell(
-      "Also checks",
-      extra
-        .map(
-          ([name, on, what]) =>
-            '<span class="opt' +
-            (on ? " on" : "") +
-            '" title="' +
-            esc(what) +
-            '">' +
-            (on ? icon("tick") : "") +
-            esc(name) +
-            "</span>",
-        )
-        .join("") + ' <button class="link-btn" onclick="openSettings()">Change</button>',
-    ) +
-    cell(
-      "From a terminal",
-      '<code class="mono">' + esc(curl) + "</code>" + copyButton(curl, "curl command"),
-      "cell-wide",
-    );
-}
-
 // ===== RECORD SETTINGS =====
 function renderRecordSettings() {
   const c = document.getElementById("recordCheckboxes");
@@ -343,7 +283,6 @@ function toggleRecord(record) {
   }
   saveSettings();
   renderRecordSettings();
-  renderHomeChecks();
 }
 
 // ===== RESOLVER SETTINGS =====
@@ -404,8 +343,6 @@ function renderSettingsResolvers() {
     }
   }
   c.innerHTML = html;
-  renderHomeNote();
-  renderHomeChecks();
 }
 
 function toggleAddResolver(force) {
@@ -515,140 +452,263 @@ function importSettings(event) {
   reader.readAsText(file);
 }
 
-// ===== HISTORY =====
-function addToHistory(domain) {
-  queryHistory = queryHistory.filter((d) => d !== domain);
-  queryHistory.unshift(domain);
-  if (queryHistory.length > 10) queryHistory = queryHistory.slice(0, 10);
+// ===== RECENT LOOKUPS =====
+// Kept in this browser only, and only while "Remember recent lookups" is on.
+function rememberRecent() {
+  return userSettings.features.rememberRecent !== false;
+}
+
+function saveHistory() {
   localStorage.setItem("lookup_history", JSON.stringify(queryHistory));
-  renderHistory();
+}
+
+function addToHistory(domain) {
+  if (!rememberRecent()) return;
+  queryHistory = [domain, ...queryHistory.filter((d) => d !== domain)].slice(0, 10);
+  saveHistory();
 }
 
 function removeFromHistory(domain) {
   queryHistory = queryHistory.filter((d) => d !== domain);
-  localStorage.setItem("lookup_history", JSON.stringify(queryHistory));
-  renderHistory();
+  saveHistory();
+  renderSuggest();
+  searchInput().focus();
 }
 
-function clearHistory() {
+function clearHistory(fromSettings) {
   queryHistory = [];
-  localStorage.setItem("lookup_history", "[]");
-  renderHistory();
-  showToast("History cleared", "success");
+  saveHistory();
+  renderSuggest();
+  if (fromSettings) showToast("Recent lookups deleted", "success");
+  else searchInput().focus();
 }
 
 function queryKind(q) {
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(q)) return "IPv4 · reverse";
-  if (q.includes(":")) return "IPv6 · reverse";
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(q)) return "IPv4";
+  if (q.includes(":")) return "IPv6";
   return "Domain";
 }
 
-function renderHistory() {
-  const list = document.getElementById("historyChips");
-  document.getElementById("clearHistoryBtn").classList.toggle("hidden", !queryHistory.length);
-  document.getElementById("historyCount").textContent = queryHistory.length
-    ? queryHistory.length + " in this browser"
-    : "";
+// ===== SEARCH =====
+// There is one search field. On the start page it sits in the middle of the
+// screen; once a lookup runs (or settings open) it moves into the top bar.
+// Focusing it opens a list of recent lookups; typing filters that list.
+function searchInput() {
+  return document.getElementById("q");
+}
 
-  if (!queryHistory.length) {
-    const example = (q) =>
-      '<button class="link-btn mono" data-action="lookup" data-value="' +
-      esc(q) +
-      '">' +
-      esc(q) +
-      "</button>";
-    list.innerHTML =
-      '<p class="empty-line">Nothing looked up in this browser yet. Try ' +
-      example("example.com") +
-      ", " +
-      example("1.1.1.1") +
-      " or " +
-      example("2606:4700:4700::1111") +
-      ".</p>";
+function focusSearch() {
+  const input = searchInput();
+  input.focus();
+  input.select();
+}
+
+function placeSearch(where) {
+  const box = document.getElementById("search");
+  const slot = document.getElementById(where === "home" ? "searchSlotHome" : "searchSlotTop");
+  document.body.classList.toggle("on-home", where === "home");
+  if (box.parentElement === slot) return;
+  const before = box.getBoundingClientRect();
+  slot.appendChild(box);
+  box.classList.toggle("search-lg", where === "home");
+  const after = box.getBoundingClientRect();
+  // Glide from the old spot to the new one so the field reads as one object.
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (before.width && userSettings.features.animations && !reduce && box.animate) {
+    box.animate(
+      [
+        {
+          transform:
+            "translate(" + (before.left - after.left) + "px," + (before.top - after.top) + "px)",
+        },
+        { transform: "none" },
+      ],
+      { duration: 260, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+    );
+  }
+}
+
+let suggestIndex = -1;
+let suggestItems = [];
+
+function suggestionsFor(val) {
+  const v = val.trim().toLowerCase();
+  const recent = rememberRecent() ? queryHistory : [];
+  const items = [];
+  for (const h of recent) {
+    if (!v || (h.includes(v) && h !== v)) items.push({ value: h, recent: true });
+  }
+  if (v && !v.includes(".") && !v.includes(":") && /^[a-z0-9-]+$/.test(v)) {
+    for (const tld of [".com", ".net", ".org", ".io"]) {
+      if (!items.some((i) => i.value === v + tld)) items.push({ value: v + tld, recent: false });
+    }
+  }
+  return items.slice(0, 8);
+}
+
+function renderSuggest() {
+  const panel = document.getElementById("suggest");
+  const input = searchInput();
+  if (document.activeElement !== input && !panel.contains(document.activeElement)) {
+    closeSuggest();
     return;
   }
-  list.innerHTML =
-    '<table class="table history-table"><caption class="sr-only">Recent lookups</caption>' +
-    '<thead><tr><th scope="col">Query</th><th scope="col">Kind</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead><tbody>' +
-    queryHistory
+  suggestItems = suggestionsFor(input.value);
+  suggestIndex = -1;
+  const showingRecent = !input.value.trim() && suggestItems.length;
+  if (!suggestItems.length) {
+    closeSuggest();
+    return;
+  }
+  panel.innerHTML =
+    (showingRecent
+      ? '<div class="suggest-head"><span>Recent</span><button type="button" class="link-btn" data-action="clear-history">Clear all</button></div>'
+      : "") +
+    '<ul class="suggest-list">' +
+    suggestItems
       .map(
-        (d) =>
-          '<tr><td class="h-name"><button class="link-btn mono" data-action="lookup" data-value="' +
-          esc(d) +
+        (item, i) =>
+          '<li class="suggest-item" role="option" id="sg-' +
+          i +
+          '" aria-selected="false" data-action="lookup" data-value="' +
+          esc(item.value) +
           '">' +
-          esc(d) +
-          '</button></td><td class="h-kind">' +
-          queryKind(d) +
-          '</td><td class="h-actions"><button class="icon-btn" data-action="remove-history" data-value="' +
-          esc(d) +
-          '" aria-label="Remove ' +
-          esc(d) +
-          ' from recent" title="Remove">' +
-          icon("close") +
-          "</button></td></tr>",
+          icon(item.recent ? "clock" : "search") +
+          '<span class="suggest-text mono">' +
+          esc(item.value) +
+          '</span><span class="suggest-kind">' +
+          queryKind(item.value) +
+          "</span>" +
+          (item.recent
+            ? '<button type="button" class="icon-btn suggest-del" data-action="remove-history" data-value="' +
+              esc(item.value) +
+              '" aria-label="Delete ' +
+              esc(item.value) +
+              ' from recent lookups" title="Delete">' +
+              icon("trash") +
+              "</button>"
+            : "") +
+          "</li>",
       )
       .join("") +
-    "</tbody></table>";
+    "</ul>";
+  panel.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+  document.getElementById("search").classList.add("open");
 }
+
+function closeSuggest() {
+  const panel = document.getElementById("suggest");
+  panel.hidden = true;
+  suggestIndex = -1;
+  searchInput().setAttribute("aria-expanded", "false");
+  searchInput().removeAttribute("aria-activedescendant");
+  document.getElementById("search").classList.remove("open");
+}
+
+function moveSuggest(step) {
+  if (!suggestItems.length) return;
+  suggestIndex = (suggestIndex + step + suggestItems.length + 1) % (suggestItems.length + 1);
+  if (suggestIndex === suggestItems.length) suggestIndex = -1;
+  const rows = document.querySelectorAll("#suggest .suggest-item");
+  rows.forEach((row, i) => row.setAttribute("aria-selected", String(i === suggestIndex)));
+  const input = searchInput();
+  if (suggestIndex >= 0) input.setAttribute("aria-activedescendant", "sg-" + suggestIndex);
+  else input.removeAttribute("aria-activedescendant");
+}
+
+// Path-specific start pages (/ipv4, /whois, ...) send the query to their own
+// endpoint instead of running a full lookup.
+let submitOverride = null;
+
+function submitSearch(e) {
+  e?.preventDefault();
+  const chosen = suggestIndex >= 0 ? suggestItems[suggestIndex]?.value : null;
+  const value = chosen || searchInput().value;
+  if (submitOverride) submitOverride(value);
+  else lookup(value);
+}
+
+function onSearchKey(e) {
+  const open = !document.getElementById("suggest").hidden;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (!open) renderSuggest();
+    moveSuggest(1);
+  } else if (e.key === "ArrowUp" && open) {
+    e.preventDefault();
+    moveSuggest(-1);
+  } else if (e.key === "Delete" && e.shiftKey && open && suggestIndex >= 0) {
+    const item = suggestItems[suggestIndex];
+    if (item.recent) {
+      e.preventDefault();
+      removeFromHistory(item.value);
+    }
+  } else if (e.key === "Escape" && open) {
+    e.stopPropagation();
+    closeSuggest();
+  }
+}
+
+function clearSearchField() {
+  const input = searchInput();
+  input.value = "";
+  input.focus();
+  renderSuggest();
+  syncClearBtn();
+}
+
+function syncClearBtn() {
+  document.getElementById("searchClear").hidden = !searchInput().value;
+}
+
+// The page focuses the field on its own after load and on "New lookup";
+// that focus is quiet. A click, Tab, Ctrl K or typing opens the list.
+let quietFocus = false;
+function focusQuietly() {
+  quietFocus = true;
+  searchInput().focus();
+  quietFocus = false;
+}
+document.addEventListener("focusin", (e) => {
+  if (e.target === searchInput() && !quietFocus) renderSuggest();
+});
+document.addEventListener("click", (e) => {
+  if (e.target === searchInput() && document.getElementById("suggest").hidden) renderSuggest();
+});
+document.addEventListener("input", (e) => {
+  if (e.target === searchInput()) {
+    syncClearBtn();
+    renderSuggest();
+  }
+});
+// Clicks inside the panel keep focus in the field; clicks elsewhere close it.
+document.addEventListener("mousedown", (e) => {
+  if (e.target.closest("#suggest")) e.preventDefault();
+  else if (!e.target.closest("#search")) closeSuggest();
+});
+document.addEventListener("focusout", (e) => {
+  if (e.target === searchInput() && !document.getElementById("search").contains(e.relatedTarget)) {
+    closeSuggest();
+  }
+});
 
 // ===== NAVIGATION =====
 function goHome(fromHistory) {
   showView("home");
   document.getElementById("results").innerHTML = "";
-  document.getElementById("domainTop").value = "";
+  searchInput().value = "";
+  syncClearBtn();
   if (!fromHistory) history.pushState({}, "", "/");
   window.scrollTo({ top: 0 });
-  document.getElementById("domainHome").focus();
+  focusQuietly();
 }
 
 function quickLookup(domain) {
-  document.getElementById("homeDropdown")?.classList.remove("show");
-  document.getElementById("topDropdown")?.classList.remove("show");
-  document.getElementById("domainHome").value = domain;
-  triggerLookup("domainHome");
+  closeSuggest();
+  if (submitOverride) submitOverride(domain);
+  else lookup(domain);
 }
-
-function handleAutocomplete(e, dropdownId) {
-  const val = e.target.value.trim().toLowerCase();
-  const dd = document.getElementById(dropdownId);
-  if (!val) {
-    dd.classList.remove("show");
-    return;
-  }
-
-  const suggestions = new Set();
-  queryHistory.forEach((h) => {
-    if (h.includes(val) && h !== val) suggestions.add(h);
-  });
-  if (!val.includes(".")) {
-    [".com", ".net", ".org", ".io"].forEach((t) => suggestions.add(val + t));
-  }
-
-  if (suggestions.size === 0) {
-    dd.classList.remove("show");
-    return;
-  }
-
-  dd.innerHTML = Array.from(suggestions)
-    .slice(0, 5)
-    .map(
-      (s) =>
-        '<div class="autocomplete-item" data-action="lookup" data-value="' +
-        esc(s) +
-        '">' +
-        esc(s) +
-        "</div>",
-    )
-    .join("");
-  dd.classList.add("show");
-}
-
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".search") && !e.target.closest(".autocomplete-dropdown")) {
-    document.getElementById("homeDropdown")?.classList.remove("show");
-    document.getElementById("topDropdown")?.classList.remove("show");
-  }
-});
 
 // ===== HELPERS =====
 // Escapes text for HTML content and quoted attribute values. Everything that
@@ -675,10 +735,9 @@ const clickActions = {
   "remove-resolver": (value) => removeResolver(value),
   "save-resolver": (value) => saveEditResolver(value),
   rerun: () => {
-    if (!latestData) return;
-    document.getElementById("domainTop").value = latestData.domain;
-    triggerLookup("domainTop");
+    if (latestData) lookup(latestData.domain);
   },
+  "clear-history": () => clearHistory(),
 };
 
 document.addEventListener("click", (e) => {
@@ -693,10 +752,6 @@ document.addEventListener("change", (e) => {
   if (e.target.id === "onlyDiff") setOnlyDiff(e.target.checked);
   if (e.target.name === "resultView") setResultView(e.target.value);
 });
-
-function handleEnter(e, inputId) {
-  if (e.key === "Enter") triggerLookup(inputId);
-}
 
 function isSubdomain(domain) {
   const parts = domain.split(".");
@@ -893,8 +948,10 @@ function analyzeSecurityRecords(dnsData, dmarcResults) {
 }
 
 // ===== MAIN LOOKUP =====
-async function triggerLookup(inputId, fromHistory) {
-  let domain = document.getElementById(inputId).value.trim().toLowerCase();
+async function lookup(query, fromHistory) {
+  let domain = String(query || "")
+    .trim()
+    .toLowerCase();
   if (!domain) return;
 
   const ipv4Regex =
@@ -908,14 +965,12 @@ async function triggerLookup(inputId, fromHistory) {
     return;
   }
 
-  document.getElementById("domainHome").value = domain;
-  document.getElementById("domainTop").value = domain;
+  searchInput().value = domain;
+  closeSuggest();
 
   document.getElementById("results").innerHTML = "";
   document.getElementById("loadingDomain").textContent = domain;
   document.getElementById("loading").classList.remove("hidden");
-  document.getElementById("topDropdown").classList.remove("show");
-  document.getElementById("homeDropdown").classList.remove("show");
   showView("results");
   if (!fromHistory) history.pushState({}, "", "/?domain=" + encodeURIComponent(domain));
   window.scrollTo({ top: 0 });
@@ -2210,30 +2265,20 @@ if (
   if (path === "/ssl") titleStr = "Certificate lookup";
   if (path === "/security") titleStr = "Mail and CAA records";
   document.title = titleStr;
-  document.querySelector("#homeTitle label").textContent = titleStr;
-  const btn = document.getElementById("homeLookupBtn");
-  const input = document.getElementById("domainHome");
-  const go = () => {
-    window.location.href = path + "/" + encodeURIComponent(input.value.trim());
-  };
-  btn.onclick = go;
-  input.onkeydown = (e) => {
-    if (e.key === "Enter") go();
+  document.getElementById("homeTag").textContent = titleStr;
+  submitOverride = (value) => {
+    const v = String(value || "").trim();
+    if (v) window.location.href = path + "/" + encodeURIComponent(v);
   };
 }
 
-if (domainToLookup) {
-  document.getElementById("domainHome").value = domainToLookup;
-  triggerLookup("domainHome");
-}
+placeSearch(domainToLookup ? "top" : "home");
+if (domainToLookup) lookup(domainToLookup);
+else focusQuietly();
 
 // Back and forward move between lookups instead of leaving the app.
 window.addEventListener("popstate", () => {
   const q = new URLSearchParams(location.search).get("domain");
-  if (q) {
-    document.getElementById("domainHome").value = q;
-    triggerLookup("domainHome", true);
-  } else {
-    goHome(true);
-  }
+  if (q) lookup(q, true);
+  else goHome(true);
 });
