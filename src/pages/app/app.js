@@ -95,7 +95,50 @@ document.addEventListener("keydown", (e) => {
 let currentView = "home";
 let viewBeforeSettings = "home";
 
+// ===== MOTION =====
+// Motion explains changes: the search field glides between the start page
+// and the top bar, new content fades in, and controls confirm what they did.
+// The "Animations" setting turns all of it off; reduced motion keeps only fades.
+function motionOn() {
+  return userSettings.features.animations !== false;
+}
+function reducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+// Runs a DOM update as a view transition where the browser supports it.
+function withTransition(update) {
+  if (!document.startViewTransition || !motionOn() || document.hidden) {
+    update();
+    return Promise.resolve();
+  }
+  return document.startViewTransition(update).updateCallbackDone.catch(() => {});
+}
+
+// A short entrance for content that was just swapped in.
+function enter(el, rise) {
+  if (!el || !el.animate || !motionOn()) return;
+  const lift = rise && !reducedMotion() ? "translateY(6px)" : "none";
+  el.animate(
+    [
+      { opacity: 0, transform: lift },
+      { opacity: 1, transform: "none" },
+    ],
+    { duration: 240, easing: EASE_OUT },
+  );
+}
+
 function showView(name) {
+  if (name === currentView) {
+    applyView(name);
+    return Promise.resolve();
+  }
+  currentView = name;
+  return withTransition(() => applyView(name));
+}
+
+function applyView(name) {
   currentView = name;
   const views = { home: "homePage", results: "resultsPage", settings: "settingsPage" };
   for (const [view, id] of Object.entries(views)) {
@@ -151,7 +194,7 @@ function openSettings() {
   if (currentView === "settings") return;
   viewBeforeSettings = currentView;
   showView("settings");
-  window.scrollTo({ top: 0 });
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function closeSettings() {
   if (currentView !== "settings") return;
@@ -244,7 +287,11 @@ function isDarkTheme() {
 
 // Top bar button: flip to the opposite of what is on screen and pin it.
 function toggleTheme() {
-  applyAppearance(isDarkTheme() ? "light" : "dark");
+  const next = isDarkTheme() ? "light" : "dark";
+  document.documentElement.classList.add("theme-switch");
+  withTransition(() => applyAppearance(next)).then(() => {
+    setTimeout(() => document.documentElement.classList.remove("theme-switch"), 400);
+  });
 }
 
 // The curl command that returns the same lookup from the API.
@@ -471,8 +518,24 @@ function addToHistory(domain) {
 function removeFromHistory(domain) {
   queryHistory = queryHistory.filter((d) => d !== domain);
   saveHistory();
-  renderSuggest();
-  searchInput().focus();
+  const row = [...document.querySelectorAll("#suggest .suggest-item")].find(
+    (r) => r.dataset.value === domain,
+  );
+  const done = () => {
+    renderSuggest();
+    searchInput().focus();
+  };
+  if (!row || !row.animate || !motionOn() || reducedMotion()) return done();
+  row.style.overflow = "hidden";
+  row
+    .animate(
+      [
+        { opacity: 1, height: row.offsetHeight + "px", minHeight: "0px" },
+        { opacity: 0, height: "0px", minHeight: "0px" },
+      ],
+      { duration: 160, easing: "ease-in", fill: "forwards" },
+    )
+    .finished.then(done, done);
 }
 
 function clearHistory(fromSettings) {
@@ -508,24 +571,10 @@ function placeSearch(where) {
   const slot = document.getElementById(where === "home" ? "searchSlotHome" : "searchSlotTop");
   document.body.classList.toggle("on-home", where === "home");
   if (box.parentElement === slot) return;
-  const before = box.getBoundingClientRect();
+  const hadFocus = box.contains(document.activeElement);
   slot.appendChild(box);
   box.classList.toggle("search-lg", where === "home");
-  const after = box.getBoundingClientRect();
-  // Glide from the old spot to the new one so the field reads as one object.
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (before.width && userSettings.features.animations && !reduce && box.animate) {
-    box.animate(
-      [
-        {
-          transform:
-            "translate(" + (before.left - after.left) + "px," + (before.top - after.top) + "px)",
-        },
-        { transform: "none" },
-      ],
-      { duration: 260, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
-    );
-  }
+  if (hadFocus && where === "home") focusQuietly();
 }
 
 let suggestIndex = -1;
@@ -695,13 +744,15 @@ document.addEventListener("focusout", (e) => {
 
 // ===== NAVIGATION =====
 function goHome(fromHistory) {
-  showView("home");
-  document.getElementById("results").innerHTML = "";
-  searchInput().value = "";
-  syncClearBtn();
   if (!fromHistory) history.pushState({}, "", "/");
-  window.scrollTo({ top: 0 });
-  focusQuietly();
+  currentView = "home";
+  withTransition(() => {
+    applyView("home");
+    document.getElementById("results").innerHTML = "";
+    searchInput().value = "";
+    syncClearBtn();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }).then(focusQuietly);
 }
 
 function quickLookup(domain) {
@@ -966,6 +1017,7 @@ async function lookup(query, fromHistory) {
   }
 
   searchInput().value = domain;
+  searchInput().blur();
   closeSuggest();
 
   document.getElementById("results").innerHTML = "";
@@ -973,7 +1025,7 @@ async function lookup(query, fromHistory) {
   document.getElementById("loading").classList.remove("hidden");
   showView("results");
   if (!fromHistory) history.pushState({}, "", "/?domain=" + encodeURIComponent(domain));
-  window.scrollTo({ top: 0 });
+  window.scrollTo({ top: 0, behavior: "instant" });
   addToHistory(domain);
 
   let lookupTypes = [...userSettings.defaultRecords];
@@ -1432,6 +1484,7 @@ function setPanelBody(id, summary, body) {
   if (!el) return;
   el.querySelector(".panel-sum").innerHTML = summary;
   el.querySelector(".panel-body").innerHTML = body;
+  enter(el.querySelector(".panel-body"), false);
   updateIndex();
 }
 
@@ -1861,6 +1914,7 @@ function setResultView(view) {
   document.getElementById("formView").hidden = view !== "form";
   document.getElementById("zoneView").hidden = view !== "zone";
   document.getElementById("jsonView").hidden = view !== "json";
+  enter(document.getElementById(view + "View"), true);
   const filter = document.querySelector(".filter");
   if (filter) filter.classList.toggle("is-off", view !== "form");
   if (view === "zone") renderZoneView();
@@ -2272,9 +2326,13 @@ if (
   };
 }
 
-placeSearch(domainToLookup ? "top" : "home");
-if (domainToLookup) lookup(domainToLookup);
-else focusQuietly();
+if (domainToLookup) {
+  applyView("results");
+  lookup(domainToLookup);
+} else {
+  placeSearch("home");
+  focusQuietly();
+}
 
 // Back and forward move between lookups instead of leaving the app.
 window.addEventListener("popstate", () => {

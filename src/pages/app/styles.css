@@ -1426,3 +1426,149 @@ body.on-home .topbar-sep {
   width: 30px;
   flex: none;
 }
+
+/* ===== Motion =====
+   The search field is one named element, so a view transition glides it
+   between the start page and the top bar while the rest cross-fades. */
+#search {
+  view-transition-name: search;
+}
+::view-transition-group(search) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+.theme-switch::view-transition-old(root),
+.theme-switch::view-transition-new(root) {
+  animation-duration: 320ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0.3;
+    transform: scale(0.6);
+  }
+}
+
+/* Results arrive top to bottom: header, section bar, then each section. */
+#results > .zone,
+#results > .sectionbar,
+#formView > .panel {
+  animation: rise 380ms var(--ease-out) backwards;
+}
+#results > .sectionbar {
+  animation-delay: 50ms;
+}
+#formView > .panel:nth-child(1) {
+  animation-delay: 100ms;
+}
+#formView > .panel:nth-child(2) {
+  animation-delay: 150ms;
+}
+#formView > .panel:nth-child(3) {
+  animation-delay: 200ms;
+}
+#formView > .panel:nth-child(n + 4) {
+  animation-delay: 250ms;
+}
+#loading:not(.hidden) {
+  animation: fade 200ms ease-out;
+}
+
+/* The suggestion list unfolds from the field. */
+.suggest:not([hidden]) {
+  animation: drop 160ms var(--ease-out);
+}
+.search-box {
+  transition:
+    box-shadow 160ms,
+    border-color 160ms,
+    border-radius 120ms;
+}
+.suggest-item {
+  transition: background-color 100ms;
+}
+.suggest-del {
+  transition:
+    opacity 100ms,
+    background-color 100ms,
+    color 100ms;
+}
+
+/* Dialogs and the settings page. */
+.modal-overlay:not(.hidden) {
+  animation: fade 160ms ease-out;
+}
+.modal-overlay:not(.hidden) .modal {
+  animation: rise 240ms var(--ease-out);
+}
+
+/* Controls confirm what they did. */
+.copy-btn.copied .icon {
+  animation: pop 220ms var(--ease-out);
+}
+.btn {
+  transition:
+    background-color 120ms,
+    color 120ms,
+    border-color 120ms,
+    transform 80ms;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduced motion: keep the fades that explain a change, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes drop {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0.3;
+    }
+  }
+  ::view-transition-group(search) {
+    animation: none;
+  }
+  #results > .sectionbar,
+  #formView > .panel {
+    animation-delay: 0ms !important;
+  }
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}

@@ -1073,12 +1073,11 @@ select.settings-input {
   }
 }
 
+/* Reduced motion: no sliding; colour and opacity changes stay. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  .sidebar,
+  .toggle-slider::before {
+    transition: none;
   }
 }
 
