@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>lookup &middot; Domain / IP</title>
-<meta name="description" content="DNS lookup that asks several resolvers in parallel and shows where they agree, with mail records, registry data and certificates.">
+<title>nslookup</title>
+<meta name="description" content="DNS lookup that asks several resolvers in parallel and shows which one returned each answer, with mail records, registry data and certificates.">
 <meta name="color-scheme" content="light dark">
 <script>
   // Apply the saved theme before first paint so there is no flash.
@@ -33,44 +33,29 @@
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
-  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 16 16"><path d="M3 8.4l3.2 3.2L13 4.6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M15 9V6a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.2L2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 10v4M12 17h.01"/></symbol>
   <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
-  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol>
-  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
-  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
-  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5L12 13l8.5-6.5"/></symbol>
-  <symbol id="i-registry" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.8 3.5-2.8s2.9 1 3.5 2.8M15 9.5h3M15 13h3"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
-  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9.5l3 2.5-3 2.5M12.5 15H17"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/></symbol>
-  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
-  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.7 4.3L20 15.5M20 20v-4.5h-4.5"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
 </svg>
 
-<!-- Top bar -->
+<!-- Top band -->
 <header class="topbar">
-  <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar" onclick="toggleSidebar()">
-    <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
-  </button>
-  <a class="brand" href="/" onclick="goHome(); return false;" title="Overview">
+  <a class="brand" href="/" onclick="goHome(); return false;" title="New lookup">
     <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#f38020"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="5.5"/><path d="M19 19l-3.8-3.8"/></g></svg>
     <span>nslookup</span>
   </a>
   <span class="topbar-sep" aria-hidden="true"></span>
   <div class="topsearch" role="search">
     <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
-    <input id="domainTop" class="search" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Look up a domain or IP address" placeholder="Look up a domain or IP…" onkeydown="handleEnter(event, 'domainTop')" oninput="handleAutocomplete(event, 'topDropdown')" />
+    <input id="domainTop" class="search" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Look up a domain or IP address" placeholder="Domain or IP address" onkeydown="handleEnter(event, 'domainTop')" oninput="handleAutocomplete(event, 'topDropdown')" />
     <kbd class="topsearch-kbd" aria-hidden="true">Ctrl K</kbd>
     <div id="topDropdown" class="autocomplete-dropdown" role="listbox"></div>
   </div>
@@ -83,307 +68,221 @@
       <svg class="icon i-moon" aria-hidden="true"><use href="#i-moon"/></svg>
       <svg class="icon i-sun" aria-hidden="true"><use href="#i-sun"/></svg>
     </button>
-    <button class="icon-btn" onclick="openSettings()" title="Settings (Ctrl+,)" aria-label="Settings">
+    <button class="icon-btn" data-nav="settings" onclick="openSettings()" title="Settings (Ctrl+,)" aria-label="Settings">
       <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg>
     </button>
   </div>
 </header>
 
-<div class="shell">
-  <!-- Sidebar -->
-  <nav class="sidebar" id="sidebar" aria-label="Main">
-    <div class="side-group">
-      <a class="side-item" href="/" data-nav="home" onclick="goHome(); return false;">
-        <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="side-text">Overview</span>
-      </a>
+<main class="app-main" id="main">
+
+  <!-- ===== NEW LOOKUP ===== -->
+  <section class="view page" id="homePage" aria-labelledby="homeTitle">
+    <div class="query-block">
+      <h1 id="homeTitle"><label for="domainHome">Look up a domain or IP address</label></h1>
+      <div class="query">
+        <div class="query-field">
+          <input id="domainHome" class="search mono" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="handleEnter(event, 'domainHome')" oninput="handleAutocomplete(event, 'homeDropdown')" />
+          <div id="homeDropdown" class="autocomplete-dropdown" role="listbox"></div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="homeLookupBtn" onclick="triggerLookup('domainHome')">Look up</button>
+      </div>
+      <dl class="cells" id="homeConditions"></dl>
     </div>
 
-    <div class="side-group hidden" id="sideReport">
-      <div class="side-label mono" id="sideDomain"></div>
-      <div id="sideSections"></div>
+    <section class="card" id="historySection" aria-labelledby="recentTitle">
+      <div class="card-head">
+        <h2 id="recentTitle">Recent</h2>
+        <span class="card-meta">
+          <span id="historyCount"></span>
+          <button class="link-btn hidden" id="clearHistoryBtn" onclick="clearHistory()">Clear</button>
+        </span>
+      </div>
+      <div id="historyChips"></div>
+    </section>
+  </section>
+
+  <!-- ===== RESULTS ===== -->
+  <section class="view page hidden" id="resultsPage">
+    <div id="loading" class="hidden">
+      <header class="zone">
+        <div class="zone-title"><h1 class="zone-name mono" id="loadingDomain"></h1><span class="badge"><span class="spinner" aria-hidden="true"></span>Querying</span></div>
+        <p class="zone-loading loader-text" role="status"></p>
+      </header>
+      <div class="pending-rows" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
     </div>
 
-    <div class="side-group hidden" id="sideRecentGroup">
-      <div class="side-label">Recent</div>
-      <div id="sideRecent"></div>
+    <div id="results" class="results"></div>
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section class="view page page-narrow hidden" id="settingsPage" aria-labelledby="settingsTitle">
+    <div class="page-head">
+      <div>
+        <h1 id="settingsTitle">Settings</h1>
+        <p class="page-desc">Saved in this browser only. Nothing here is sent to the server.</p>
+      </div>
+      <button class="btn" onclick="closeSettings()">Done</button>
     </div>
 
-    <div class="side-foot">
-      <a class="side-item" href="/help">
-        <svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg><span class="side-text">CLI reference</span>
-      </a>
-      <a class="side-item" href="/api-docs">
-        <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span class="side-text">API reference</span>
-      </a>
-      <button class="side-item" onclick="openShortcuts()">
-        <svg class="icon" aria-hidden="true"><use href="#i-keyboard"/></svg><span class="side-text">Keyboard shortcuts</span>
-      </button>
-      <button class="side-item" data-nav="settings" onclick="openSettings()">
-        <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="side-text">Settings</span>
-      </button>
-    </div>
-  </nav>
-  <div class="scrim" id="scrim" onclick="toggleSidebar(false)"></div>
-
-  <main class="main" id="main">
-
-    <!-- ===== OVERVIEW ===== -->
-    <section class="view page" id="homePage" aria-labelledby="homeTitle">
-      <div class="page-head">
-        <div>
-          <h1 id="homeTitle"><label for="domainHome">Look up a domain or IP address</label></h1>
-          <p class="page-desc" id="homeNote"></p>
+    <section class="card" aria-labelledby="setAppearanceTitle">
+      <div class="card-head"><h2 id="setAppearanceTitle">Display</h2></div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong id="setThemeTitle">Theme</strong>
+          <span>System follows your operating system.</span>
+        </div>
+        <div class="set-control">
+          <div class="segmented" role="radiogroup" aria-labelledby="setThemeTitle">
+            <label><input type="radio" name="appearance" value="system" onchange="applyAppearance(this.value)"><span>System</span></label>
+            <label><input type="radio" name="appearance" value="light" onchange="applyAppearance(this.value)"><span>Light</span></label>
+            <label><input type="radio" name="appearance" value="dark" onchange="applyAppearance(this.value)"><span>Dark</span></label>
+          </div>
         </div>
       </div>
-
-      <div class="card lookup-card">
-        <div class="lookup-body">
-          <div class="query">
-            <div class="query-field">
-              <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
-              <input id="domainHome" class="search" placeholder="example.com or 1.1.1.1" autocomplete="off" spellcheck="false" autocapitalize="off" onkeydown="handleEnter(event, 'domainHome')" oninput="handleAutocomplete(event, 'homeDropdown')" />
-              <div id="homeDropdown" class="autocomplete-dropdown" role="listbox"></div>
-            </div>
-            <button class="btn btn-primary btn-lg" id="homeLookupBtn" onclick="triggerLookup('domainHome')">Look up</button>
-          </div>
-          <div class="examples">
-            <span>Try</span>
-            <button class="chip" data-action="lookup" data-value="example.com">example.com</button>
-            <button class="chip" data-action="lookup" data-value="1.1.1.1">1.1.1.1</button>
-            <button class="chip" data-action="lookup" data-value="2606:4700:4700::1111">2606:4700:4700::1111</button>
-          </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Animations</strong>
+          <span>Transitions when views and rows change.</span>
         </div>
-        <div class="card-foot terminal-foot">
-          <svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg>
-          <span>Same lookup from a terminal</span>
-          <code class="mono" id="homeCurl"></code>
-          <span class="spacer"></span>
-          <a href="/help">CLI reference<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="set-control">
+          <label class="toggle-switch"><input type="checkbox" id="setAnimations" onchange="toggleSetting('features','animations',this.checked)" aria-label="Animations"><span class="toggle-slider"></span></label>
         </div>
       </div>
-
-      <div class="home-grid">
-        <section class="card" id="historySection" aria-labelledby="recentTitle">
-          <div class="card-head">
-            <div>
-              <h2 id="recentTitle">Recent lookups</h2>
-              <p class="card-desc">Kept in this browser only.</p>
-            </div>
-            <button class="link-btn hidden" id="clearHistoryBtn" onclick="clearHistory()">Clear</button>
-          </div>
-          <div id="historyChips"></div>
-        </section>
-
-        <section class="card" aria-labelledby="checksTitle">
-          <div class="card-head">
-            <div>
-              <h2 id="checksTitle">What a lookup checks</h2>
-              <p class="card-desc">Every check runs in parallel. Turn checks on or off in Settings.</p>
-            </div>
-          </div>
-          <div id="homeChecks"></div>
-          <div class="card-foot">
-            <span class="spacer"></span>
-            <button class="link-btn" onclick="openSettings()">Open settings<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></button>
-          </div>
-        </section>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Keyboard shortcuts</strong>
+          <span>Press <kbd>?</kbd> anywhere outside a text field.</span>
+        </div>
+        <div class="set-control"><button class="btn" onclick="openShortcuts()">Show</button></div>
       </div>
-
-      <p class="home-keys"><kbd>Ctrl</kbd> <kbd>K</kbd> search <span aria-hidden="true">·</span> <kbd>Ctrl</kbd> <kbd>,</kbd> settings <span aria-hidden="true">·</span> <kbd>Esc</kbd> close</p>
     </section>
 
-    <!-- ===== RESULTS ===== -->
-    <section class="view page hidden" id="resultsPage">
-      <div id="loading" class="hidden">
-        <div class="page-head">
-          <div>
-            <div class="crumbs"><span>Lookups</span></div>
-            <h1 class="zone-name" id="loadingDomain"></h1>
-            <p class="zone-meta loader-text" role="status">Querying…</p>
-          </div>
+    <section class="card" aria-labelledby="checksTitle">
+      <div class="card-head"><h2 id="checksTitle">Checks</h2></div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Mail records</strong>
+          <span>SPF, DMARC and DKIM, plus CAA in the TLS section.</span>
         </div>
-        <div class="card" aria-hidden="true">
-          <div class="card-head"><div><h2>DNS records</h2><p class="card-desc">Waiting for every resolver to answer.</p></div></div>
-          <div class="pending-rows"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="set-control">
+          <label class="toggle-switch"><input type="checkbox" id="setSecurity" onchange="toggleSetting('features','enableSecurity',this.checked)" aria-label="Mail records"><span class="toggle-slider"></span></label>
         </div>
       </div>
-
-      <div id="results" class="results"></div>
-    </section>
-
-    <!-- ===== SETTINGS ===== -->
-    <section class="view page page-narrow hidden" id="settingsPage" aria-labelledby="settingsTitle">
-      <div class="page-head">
-        <div>
-          <div class="crumbs"><button class="link-btn" onclick="goHome()">Overview</button><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg><span>Settings</span></div>
-          <h1 id="settingsTitle">Settings</h1>
-          <p class="page-desc">Saved in this browser. Nothing here is sent to the server.</p>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Registry (WHOIS / RDAP)</strong>
+          <span>Registrar, status, dates and nameservers.</span>
+        </div>
+        <div class="set-control">
+          <label class="toggle-switch"><input type="checkbox" id="setWhois" onchange="toggleSetting('features','enableWhois',this.checked)" aria-label="Registry lookups"><span class="toggle-slider"></span></label>
         </div>
       </div>
-
-      <section class="card" aria-labelledby="setAppearanceTitle">
-        <div class="set-row">
-          <div class="set-text">
-            <strong id="setAppearanceTitle">Theme</strong>
-            <span>System follows your operating system.</span>
-          </div>
-          <div class="set-control">
-            <div class="segmented" role="radiogroup" aria-labelledby="setAppearanceTitle">
-              <label><input type="radio" name="appearance" value="system" onchange="applyAppearance(this.value)"><span>System</span></label>
-              <label><input type="radio" name="appearance" value="light" onchange="applyAppearance(this.value)"><span>Light</span></label>
-              <label><input type="radio" name="appearance" value="dark" onchange="applyAppearance(this.value)"><span>Dark</span></label>
-            </div>
-          </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>RDAP server</strong>
+          <span>Base URL for registry requests.</span>
         </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Animations</strong>
-            <span>Transitions when rows and views open and close.</span>
-          </div>
-          <div class="set-control">
-            <label class="toggle-switch"><input type="checkbox" id="setAnimations" onchange="toggleSetting('features','animations',this.checked)" aria-label="Animations"><span class="toggle-slider"></span></label>
-          </div>
+        <div class="set-control">
+          <input type="text" class="settings-input mono" id="setRdapServer" onchange="updateSettingText('advanced','rdapServer',this.value)" placeholder="https://rdap.org/domain/" aria-label="RDAP server URL">
         </div>
-      </section>
-
-      <h2 class="section-title">Checks</h2>
-      <section class="card" aria-label="Checks">
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Mail records</strong>
-            <span>SPF, DMARC and DKIM guidance, plus CAA in the TLS section.</span>
-          </div>
-          <div class="set-control">
-            <label class="toggle-switch"><input type="checkbox" id="setSecurity" onchange="toggleSetting('features','enableSecurity',this.checked)" aria-label="Mail records"><span class="toggle-slider"></span></label>
-          </div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Certificates</strong>
+          <span>Recent certificates from Certificate Transparency logs.</span>
         </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Registry (WHOIS / RDAP)</strong>
-            <span>Registrar, status, dates and nameservers.</span>
-          </div>
-          <div class="set-control">
-            <label class="toggle-switch"><input type="checkbox" id="setWhois" onchange="toggleSetting('features','enableWhois',this.checked)" aria-label="Registry lookups"><span class="toggle-slider"></span></label>
-          </div>
+        <div class="set-control">
+          <label class="toggle-switch"><input type="checkbox" id="setSsl" onchange="toggleSetting('features','enableSsl',this.checked)" aria-label="Certificates"><span class="toggle-slider"></span></label>
         </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>RDAP server</strong>
-            <span>Registry data is requested from this base URL.</span>
-          </div>
-          <div class="set-control">
-            <input type="text" class="settings-input mono" id="setRdapServer" onchange="updateSettingText('advanced','rdapServer',this.value)" placeholder="https://rdap.org/domain/" aria-label="RDAP server URL">
-          </div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Certificate source</strong>
+          <span>Which Certificate Transparency service to ask.</span>
         </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Certificates</strong>
-            <span>Recent certificates from Certificate Transparency logs.</span>
-          </div>
-          <div class="set-control">
-            <label class="toggle-switch"><input type="checkbox" id="setSsl" onchange="toggleSetting('features','enableSsl',this.checked)" aria-label="Certificates"><span class="toggle-slider"></span></label>
-          </div>
+        <div class="set-control">
+          <select class="settings-input" id="setSslProvider" onchange="updateSettingText('advanced','sslProvider',this.value)" aria-label="Certificate source">
+            <option value="certspotter">CertSpotter</option>
+            <option value="crt.sh">crt.sh</option>
+          </select>
         </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Certificate source</strong>
-            <span>Which Certificate Transparency service to ask.</span>
-          </div>
-          <div class="set-control">
-            <select class="settings-input" id="setSslProvider" onchange="updateSettingText('advanced','sslProvider',this.value)" aria-label="Certificate source">
-              <option value="certspotter">CertSpotter</option>
-              <option value="crt.sh">crt.sh</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <h2 class="section-title">DNS</h2>
-      <section class="card" aria-labelledby="recordTypesTitle">
-        <div class="card-head">
-          <div>
-            <h3 id="recordTypesTitle">Record types</h3>
-            <p class="card-desc">Types queried on every lookup.</p>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="recordCheckboxes" class="record-toggles"></div>
-        </div>
-      </section>
-
-      <section class="card" aria-labelledby="resolversTitle">
-        <div class="card-head">
-          <div>
-            <h3 id="resolversTitle">Resolvers</h3>
-            <p class="card-desc">DNS-over-HTTPS JSON endpoints, asked in parallel. A lookup compares every active one.</p>
-          </div>
-          <button class="btn" onclick="toggleAddResolver()"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add resolver</button>
-        </div>
-        <div class="resolver-add hidden" id="resolverAdd">
-          <label class="field"><span>Name</span><input type="text" class="settings-input" id="newResName" placeholder="Quad9"></label>
-          <label class="field field-wide"><span>URL</span><input type="text" class="settings-input mono" id="newResUrl" placeholder="https://dns.quad9.net:5053/dns-query"></label>
-          <div class="resolver-add-actions">
-            <button class="btn" onclick="toggleAddResolver(false)">Cancel</button>
-            <button class="btn btn-primary" onclick="addResolver()">Save</button>
-          </div>
-        </div>
-        <div id="resolverList" class="resolver-list"></div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Resolver timeout</strong>
-            <span>Milliseconds before a resolver counts as failed.</span>
-          </div>
-          <div class="set-control">
-            <input type="number" class="settings-input mono narrow" id="setTimeout" onchange="updateSettingText('advanced','timeout',parseInt(this.value))" placeholder="5000" aria-label="Resolver timeout in milliseconds">
-          </div>
-        </div>
-        <div class="card-foot">
-          <span>The API takes <code>?resolvers=&lt;url&gt;,&lt;url&gt;</code> on every endpoint.</span>
-          <span class="spacer"></span>
-          <a href="/api-docs">API reference<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
-        </div>
-      </section>
-
-      <h2 class="section-title">Data</h2>
-      <section class="card" aria-label="Data">
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Export settings</strong>
-            <span>Download your configuration as JSON.</span>
-          </div>
-          <div class="set-control"><button class="btn" onclick="exportSettings()"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Export</button></div>
-        </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Import settings</strong>
-            <span>Load a configuration file exported from here.</span>
-          </div>
-          <div class="set-control">
-            <button class="btn" onclick="document.getElementById('importFile').click()">Import</button>
-            <input type="file" id="importFile" class="hidden" accept=".json" onchange="importSettings(event)">
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-danger" aria-label="Reset">
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Clear history</strong>
-            <span>Remove all recent lookups from this browser.</span>
-          </div>
-          <div class="set-control"><button class="btn btn-danger" onclick="clearHistory()">Clear history</button></div>
-        </div>
-        <div class="set-row">
-          <div class="set-text">
-            <strong>Reset settings</strong>
-            <span>Restore every setting on this page to its default.</span>
-          </div>
-          <div class="set-control"><button class="btn btn-danger" onclick="resetSettings()">Reset settings</button></div>
-        </div>
-      </section>
+      </div>
     </section>
-  </main>
-</div>
+
+    <section class="card" aria-labelledby="recordTypesTitle">
+      <div class="card-head"><h2 id="recordTypesTitle">Record types</h2><span class="card-meta">Queried on every lookup</span></div>
+      <div class="card-body">
+        <div id="recordCheckboxes" class="record-toggles"></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="resolversTitle">
+      <div class="card-head">
+        <h2 id="resolversTitle">Resolvers</h2>
+        <button class="btn" onclick="toggleAddResolver()"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add resolver</button>
+      </div>
+      <div class="resolver-add hidden" id="resolverAdd">
+        <label class="field"><span>Name</span><input type="text" class="settings-input" id="newResName" placeholder="Quad9"></label>
+        <label class="field field-wide"><span>DoH JSON URL</span><input type="text" class="settings-input mono" id="newResUrl" placeholder="https://dns.quad9.net:5053/dns-query"></label>
+        <div class="resolver-add-actions">
+          <button class="btn" onclick="toggleAddResolver(false)">Cancel</button>
+          <button class="btn btn-primary" onclick="addResolver()">Save</button>
+        </div>
+      </div>
+      <div id="resolverList" class="resolver-list"></div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Resolver timeout</strong>
+          <span>Milliseconds before a resolver counts as failed.</span>
+        </div>
+        <div class="set-control">
+          <input type="number" class="settings-input mono narrow" id="setTimeout" onchange="updateSettingText('advanced','timeout',parseInt(this.value))" placeholder="5000" aria-label="Resolver timeout in milliseconds">
+        </div>
+      </div>
+      <div class="card-foot">
+        <span>The API takes <code>?resolvers=&lt;url&gt;,&lt;url&gt;</code> on every endpoint.</span>
+        <span class="spacer"></span>
+        <a href="/api-docs">API reference<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="dataTitle">
+      <div class="card-head"><h2 id="dataTitle">Data</h2></div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Export settings</strong>
+          <span>Download this configuration as JSON.</span>
+        </div>
+        <div class="set-control"><button class="btn" onclick="exportSettings()"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Export</button></div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Import settings</strong>
+          <span>Load a configuration file exported from here.</span>
+        </div>
+        <div class="set-control">
+          <button class="btn" onclick="document.getElementById('importFile').click()">Import</button>
+          <input type="file" id="importFile" class="hidden" accept=".json" onchange="importSettings(event)">
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Clear history</strong>
+          <span>Remove all recent lookups from this browser.</span>
+        </div>
+        <div class="set-control"><button class="btn btn-danger" onclick="clearHistory()">Clear history</button></div>
+      </div>
+      <div class="set-row">
+        <div class="set-text">
+          <strong>Reset settings</strong>
+          <span>Restore every setting on this page to its default.</span>
+        </div>
+        <div class="set-control"><button class="btn btn-danger" onclick="resetSettings()">Reset settings</button></div>
+      </div>
+    </section>
+  </section>
+</main>
 
 <button id="scrollTopBtn" class="scroll-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to top" aria-label="Back to top">
   <svg class="icon" aria-hidden="true"><use href="#i-arrow-up"/></svg>
@@ -395,10 +294,7 @@
 <div id="ipModal" class="modal-overlay hidden" onclick="if(event.target===this) closeModal('ipModal')">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-head">
-      <div>
-        <p class="modal-sub">IP address</p>
-        <h2 id="modalTitle" class="mono">IP info</h2>
-      </div>
+      <h2 id="modalTitle" class="mono">IP info</h2>
       <button class="icon-btn" onclick="closeModal('ipModal')" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <div id="modalDetails" class="modal-body">Loading…</div>
@@ -419,8 +315,11 @@
     </div>
     <dl class="kv modal-kv">
       <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Focus the lookup field</dd></div>
-      <div><dt><kbd>Ctrl</kbd> <kbd>,</kbd></dt><dd>Settings</dd></div>
       <div><dt><kbd>Enter</kbd></dt><dd>Run the lookup</dd></div>
+      <div><dt><kbd>D</kbd></dt><dd>Show only disagreements</dd></div>
+      <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Form, Zone or JSON view</dd></div>
+      <div><dt><kbd>Ctrl</kbd> <kbd>,</kbd></dt><dd>Settings</dd></div>
+      <div><dt><kbd>?</kbd></dt><dd>This list</dd></div>
       <div><dt><kbd>Esc</kbd></dt><dd>Close dialogs and settings</dd></div>
     </dl>
   </div>

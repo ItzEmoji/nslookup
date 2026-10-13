@@ -36,7 +36,7 @@ describe("browsers", () => {
   test("get the web app at /", async () => {
     const res = await get("/", BROWSER);
     expect(res.headers.get("content-type")).toBe("text/html;charset=UTF-8");
-    expect(await res.text()).toContain("<title>lookup &middot; Domain / IP</title>");
+    expect(await res.text()).toContain("<title>nslookup</title>");
   });
 
   test("get the web app on its client-side routes", async () => {

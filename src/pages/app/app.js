@@ -69,9 +69,20 @@ document.addEventListener("keydown", (e) => {
     const modalOpen = document.querySelector(".modal-overlay:not(.hidden)");
     closeModal("ipModal");
     closeModal("helpModal");
-    toggleSidebar(false);
     if (!modalOpen) closeSettings();
   }
+  // Single-key shortcuts only apply outside text fields.
+  const typing = e.target.closest && e.target.closest("input, textarea, select, [contenteditable]");
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "?") openShortcuts();
+  if (currentView !== "results" || !document.getElementById("viewSwitch")) return;
+  if (e.key === "d" || e.key === "D") {
+    const box = document.getElementById("onlyDiff");
+    box.checked = !box.checked;
+    setOnlyDiff(box.checked);
+  }
+  const views = { 1: "form", 2: "zone", 3: "json" };
+  if (views[e.key]) setResultView(views[e.key]);
 });
 
 // ===== VIEWS =====
@@ -89,25 +100,7 @@ function showView(name) {
     if (el.dataset.nav === name) el.setAttribute("aria-current", "page");
     else el.removeAttribute("aria-current");
   }
-  const hasReport = !!document.getElementById("sideSections").innerHTML;
-  document
-    .getElementById("sideReport")
-    .classList.toggle("hidden", name !== "results" || !hasReport);
-  toggleSidebar(false);
 }
-
-// The sidebar is a drawer below 900px.
-function toggleSidebar(force) {
-  const sidebar = document.getElementById("sidebar");
-  const open = force === undefined ? !sidebar.classList.contains("open") : force;
-  sidebar.classList.toggle("open", open);
-  document.getElementById("scrim").classList.toggle("show", open);
-  document.getElementById("menuBtn").setAttribute("aria-expanded", String(open));
-}
-
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".sidebar a, .sidebar button")) toggleSidebar(false);
-});
 
 // ===== ICONS =====
 // Inline SVG symbols defined at the top of index.html.
@@ -257,71 +250,66 @@ function curlFor(domain) {
   return "curl " + location.origin + "/" + domain;
 }
 
-// One line under the home search naming the resolvers that will be asked.
 function renderHomeNote() {
-  const curl = document.getElementById("homeCurl");
-  if (curl) curl.textContent = curlFor("example.com");
-  const active = Object.entries(userSettings.resolvers)
-    .filter(([_, d]) => d.active)
-    .map(([name]) => name);
-  const note = document.getElementById("homeNote");
-  if (!note) return;
-  if (!active.length) {
-    note.textContent = "No resolvers are active. Turn one on in Settings.";
-    return;
-  }
-  const names =
-    active.length === 1
-      ? active[0]
-      : active.slice(0, -1).join(", ") + " and " + active[active.length - 1];
-  note.textContent =
-    active.length === 1
-      ? "Asks " + names + "."
-      : "Asks " + names + " in parallel and shows where they agree.";
+  renderHomeChecks();
 }
 
-// "What a lookup checks" on the overview, reflecting the current settings.
+// The cells under the lookup field: what the next lookup will ask, and the
+// same lookup as a command. They reflect the current settings.
 function renderHomeChecks() {
-  const el = document.getElementById("homeChecks");
+  const el = document.getElementById("homeConditions");
   if (!el) return;
   const active = Object.entries(userSettings.resolvers)
     .filter(([_, d]) => d.active)
     .map(([name]) => name);
   const f = userSettings.features;
   const provider = userSettings.advanced.sslProvider === "crt.sh" ? "crt.sh" : "CertSpotter";
-  const items = [
-    [
-      "globe",
-      "DNS records",
-      (userSettings.defaultRecords || []).join(", ") +
-        (active.length ? " from " + active.join(", ") : " (no active resolver)"),
-      active.length > 0,
-    ],
-    ["mail", "Mail", "SPF, DMARC and DKIM, from TXT records", f.enableSecurity !== false],
-    ["registry", "Registry", "RDAP via " + rdapSource(), f.enableWhois],
-    ["lock", "Certificates", "Certificate Transparency logs via " + provider, f.enableSsl === true],
+  const extra = [
+    ["Mail", f.enableSecurity !== false, "SPF, DMARC, DKIM, CAA"],
+    ["Registry", f.enableWhois, "RDAP via " + rdapSource()],
+    ["Certificates", f.enableSsl === true, "CT logs via " + provider],
   ];
+  const cell = (label, value, cls) =>
+    '<div class="cell' +
+    (cls ? " " + cls : "") +
+    '"><dt class="label">' +
+    label +
+    "</dt><dd>" +
+    value +
+    "</dd></div>";
+  const curl = curlFor("example.com");
   el.innerHTML =
-    '<ul class="check-list">' +
-    items
-      .map(
-        ([ic, title, desc, on]) =>
-          '<li class="' +
-          (on ? "" : "off") +
-          '">' +
-          icon(ic) +
-          '<div class="check-text"><strong>' +
-          esc(title) +
-          "</strong><span>" +
-          esc(desc) +
-          '</span></div><span class="dot' +
-          (on ? "" : " dot-off") +
-          '">' +
-          (on ? "On" : "Off") +
-          "</span></li>",
-      )
-      .join("") +
-    "</ul>";
+    cell(
+      "Resolvers",
+      active.length
+        ? esc(active.join(", "))
+        : '<span class="txt-fail">None active</span> <button class="link-btn" onclick="openSettings()">Turn one on</button>',
+    ) +
+    cell(
+      "Record types",
+      '<span class="mono">' + esc(userSettings.defaultRecords.join(" ")) + "</span>",
+    ) +
+    cell(
+      "Also checks",
+      extra
+        .map(
+          ([name, on, what]) =>
+            '<span class="opt' +
+            (on ? " on" : "") +
+            '" title="' +
+            esc(what) +
+            '">' +
+            (on ? icon("tick") : "") +
+            esc(name) +
+            "</span>",
+        )
+        .join("") + ' <button class="link-btn" onclick="openSettings()">Change</button>',
+    ) +
+    cell(
+      "From a terminal",
+      '<code class="mono">' + esc(curl) + "</code>" + copyButton(curl, "curl command"),
+      "cell-wide",
+    );
 }
 
 // ===== RECORD SETTINGS =====
@@ -557,33 +545,31 @@ function queryKind(q) {
 
 function renderHistory() {
   const list = document.getElementById("historyChips");
-  const side = document.getElementById("sideRecent");
   document.getElementById("clearHistoryBtn").classList.toggle("hidden", !queryHistory.length);
-  document.getElementById("sideRecentGroup").classList.toggle("hidden", !queryHistory.length);
-
-  side.innerHTML = queryHistory
-    .slice(0, 5)
-    .map(
-      (d) =>
-        '<button class="side-item" data-action="lookup" data-value="' +
-        esc(d) +
-        '">' +
-        icon("clock") +
-        '<span class="side-text mono">' +
-        esc(d) +
-        "</span></button>",
-    )
-    .join("");
+  document.getElementById("historyCount").textContent = queryHistory.length
+    ? queryHistory.length + " in this browser"
+    : "";
 
   if (!queryHistory.length) {
+    const example = (q) =>
+      '<button class="link-btn mono" data-action="lookup" data-value="' +
+      esc(q) +
+      '">' +
+      esc(q) +
+      "</button>";
     list.innerHTML =
-      '<div class="empty-state">' +
-      icon("clock") +
-      "<p>No lookups yet</p><span>Domains and IP addresses you look up appear here.</span></div>";
+      '<p class="empty-line">Nothing looked up in this browser yet. Try ' +
+      example("example.com") +
+      ", " +
+      example("1.1.1.1") +
+      " or " +
+      example("2606:4700:4700::1111") +
+      ".</p>";
     return;
   }
   list.innerHTML =
-    '<table class="table history-table"><caption class="sr-only">Recent lookups</caption><tbody>' +
+    '<table class="table history-table"><caption class="sr-only">Recent lookups</caption>' +
+    '<thead><tr><th scope="col">Query</th><th scope="col">Kind</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead><tbody>' +
     queryHistory
       .map(
         (d) =>
@@ -606,12 +592,11 @@ function renderHistory() {
 }
 
 // ===== NAVIGATION =====
-function goHome() {
+function goHome(fromHistory) {
   showView("home");
   document.getElementById("results").innerHTML = "";
-  document.getElementById("sideSections").innerHTML = "";
-  document.getElementById("sideReport").classList.add("hidden");
-  history.pushState({}, "", "/");
+  document.getElementById("domainTop").value = "";
+  if (!fromHistory) history.pushState({}, "", "/");
   window.scrollTo({ top: 0 });
   document.getElementById("domainHome").focus();
 }
@@ -686,38 +671,15 @@ const clickActions = {
   ip: (value) => openIpModal(value),
   copy: (value, el) => copyToClipboard(value, el),
   "toggle-record": (value) => toggleRecord(value),
-  "toggle-row": (value, el) => toggleRow(value, el),
   "edit-resolver": (value) => editResolver(value),
   "remove-resolver": (value) => removeResolver(value),
   "save-resolver": (value) => saveEditResolver(value),
-  "show-more": (value, el) => {
-    const list = document.getElementById(value);
-    if (!list) return;
-    for (const li of list.querySelectorAll(".val[hidden]")) li.hidden = false;
-    list.classList.add("expanded");
-    el.remove();
-  },
   rerun: () => {
     if (!latestData) return;
     document.getElementById("domainTop").value = latestData.domain;
     triggerLookup("domainTop");
   },
 };
-
-// Hovering or focusing a value in the per-resolver comparison lights up the
-// same answer in every resolver, so the one that differs stands out.
-function linkAnswers(e, on) {
-  const cell = e.target.closest && e.target.closest(".a-data");
-  if (!cell) return;
-  const scope = cell.closest(".answers");
-  for (const c of scope.querySelectorAll(".a-data")) {
-    if (c.dataset.norm === cell.dataset.norm) c.classList.toggle("match", on);
-  }
-}
-document.addEventListener("mouseover", (e) => linkAnswers(e, true));
-document.addEventListener("mouseout", (e) => linkAnswers(e, false));
-document.addEventListener("focusin", (e) => linkAnswers(e, true));
-document.addEventListener("focusout", (e) => linkAnswers(e, false));
 
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
@@ -728,6 +690,8 @@ document.addEventListener("click", (e) => {
 document.addEventListener("change", (e) => {
   const el = e.target.closest('[data-action="toggle-resolver"]');
   if (el) toggleResolver(el.dataset.value);
+  if (e.target.id === "onlyDiff") setOnlyDiff(e.target.checked);
+  if (e.target.name === "resultView") setResultView(e.target.value);
 });
 
 function handleEnter(e, inputId) {
@@ -929,7 +893,7 @@ function analyzeSecurityRecords(dnsData, dmarcResults) {
 }
 
 // ===== MAIN LOOKUP =====
-async function triggerLookup(inputId) {
+async function triggerLookup(inputId, fromHistory) {
   let domain = document.getElementById(inputId).value.trim().toLowerCase();
   if (!domain) return;
 
@@ -948,13 +912,12 @@ async function triggerLookup(inputId) {
   document.getElementById("domainTop").value = domain;
 
   document.getElementById("results").innerHTML = "";
-  document.getElementById("sideSections").innerHTML = "";
   document.getElementById("loadingDomain").textContent = domain;
   document.getElementById("loading").classList.remove("hidden");
   document.getElementById("topDropdown").classList.remove("show");
   document.getElementById("homeDropdown").classList.remove("show");
   showView("results");
-  history.pushState({}, "", "/?domain=" + encodeURIComponent(domain));
+  if (!fromHistory) history.pushState({}, "", "/?domain=" + encodeURIComponent(domain));
   window.scrollTo({ top: 0 });
   addToHistory(domain);
 
@@ -981,9 +944,9 @@ async function triggerLookup(inputId) {
   const activeResolvers = Object.entries(userSettings.resolvers).filter(([_, d]) => d.active);
   if (!activeResolvers.length) {
     document.getElementById("results").innerHTML =
-      '<section class="card"><div class="panel-note">' +
-      icon("warn") +
-      '<span>No resolvers are active. <button class="link-btn" onclick="openSettings()">Open settings</button> and turn one on.</span></div></section>';
+      '<p class="panel-note">' +
+      badge("fail", "No resolver") +
+      '<span>Every resolver is turned off, so nothing was asked. <button class="link-btn" onclick="openSettings()">Turn one on in Settings</button></span></p>';
     document.getElementById("loading").classList.add("hidden");
     return;
   }
@@ -1056,6 +1019,7 @@ async function triggerLookup(inputId) {
 
   latestData = {
     domain,
+    query: dnsQueryName,
     timestamp: new Date().toISOString(),
     isReverseSearch,
     dns: finalResults,
@@ -1079,7 +1043,7 @@ async function triggerLookup(inputId) {
   if (sslPromise) {
     sslPromise.then((sslResult) => {
       if (sslResult) latestData.ssl = sslResult;
-      renderSslCard(sslResult, domain);
+      renderSslCard(sslResult);
     });
   }
 }
@@ -1095,100 +1059,312 @@ function registeredDomain(domain) {
 }
 
 // WHOIS and certificates only run on registered domains. Say so in their
-// panel instead of leaving the operator to wonder whether they ran at all.
+// section instead of leaving the operator to wonder whether they ran at all.
 function skippedNote(what, domain) {
   const parent = registeredDomain(domain);
   return (
-    '<div class="panel-note">' +
-    icon("info") +
-    "<span>" +
+    '<p class="panel-note">' +
     esc(what) +
-    " is looked up for registered domains only, so it was skipped for " +
+    ' is looked up for registered domains only, so it was skipped for <span class="mono">' +
     esc(domain) +
-    '. <button class="link-btn" data-action="lookup" data-value="' +
+    '</span>. <button class="link-btn mono" data-action="lookup" data-value="' +
     esc(parent) +
     '">Look up ' +
     esc(parent) +
-    "</button></span></div>"
+    "</button></p>"
   );
 }
 
 function pendingNote(text) {
   return (
-    '<div class="pending-text" role="status"><span class="spinner" aria-hidden="true"></span>' +
+    '<p class="pending-text" role="status"><span class="spinner" aria-hidden="true"></span>' +
     esc(text) +
-    "</div>"
+    "</p>"
   );
 }
 
-// A record row, in the shape of a DNS records table: type, content, status,
-// source, and an in-place "Details" row. Only out-of-range rows carry a
-// coloured badge; the rest show a quiet status dot.
+// Times are shown in UTC, ISO 8601, so they match logs and other tools.
+function isoUtc(date) {
+  return new Date(date)
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d+Z$/, "Z");
+}
+
+function isoDate(date) {
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? "Unknown" : d.toISOString().slice(0, 10);
+}
+
+// DNS status words are the leading code of the resolver error ("NXDOMAIN (…)").
+function errorCode(err) {
+  return String(err).split(" (")[0];
+}
+
+// The short form that fits a resolver column.
+function shortError(err) {
+  const code = errorCode(err);
+  if (/timeout/i.test(code)) return "TIMEOUT";
+  if (/failed to fetch|networkerror|load failed/i.test(code)) return "NO RESPONSE";
+  const rcode = String(err).match(/Status: (\d+)/);
+  if (rcode) return "RCODE " + rcode[1];
+  return code;
+}
+
+function isIpValue(value) {
+  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(value);
+}
+
+function resCell(name, inner, cls, title) {
+  return (
+    '<td class="c-res' +
+    (cls ? " " + cls : "") +
+    '" data-label="' +
+    esc(name) +
+    '"' +
+    (title ? ' title="' + esc(title) + '"' : "") +
+    ">" +
+    inner +
+    "</td>"
+  );
+}
+
+function errCell(name, err) {
+  return resCell(
+    name,
+    '<span class="res-code">' + esc(shortError(err)) + "</span>",
+    "res-err",
+    err,
+  );
+}
+
+function noDataCell(name) {
+  return resCell(
+    name,
+    '<span class="res-code">NODATA</span>',
+    "res-nodata",
+    name + " answered with no records",
+  );
+}
+
+const GROUP_FLAG = { split: "warn", error: "fail", varies: "note" };
+
+// NXDOMAIN is an answer ("this name does not exist"); anything else a
+// resolver reports (timeout, network error, SERVFAIL) means it never answered.
+function isFailure(r) {
+  return !!(r && r.error && errorCode(r.error) !== "NXDOMAIN");
+}
+
+// One register group per record type: a row per distinct answer, and one
+// column per resolver holding a tick and the TTL it returned, or a dash when
+// that resolver did not return the answer. A missing tick is a disagreement.
+// A resolver that failed shows its error once and does not count as one: the
+// failure is reported against the resolver in the header instead.
+function recordGroup(type, section, names, ipLink) {
+  const c = section.consensus;
+  const results = section.resolvers;
+  const failed = names.filter((n) => isFailure(results[n]));
+  const answering = names.filter((n) => !failed.includes(n));
+  const rows = [];
+  let state = "agree";
+  let stamp = "";
+
+  if (c && c.values && c.values.length) {
+    const diffExists = c.values.some((cv) => answering.some((n) => !cv.confirmedBy.includes(n)));
+    const allAnswered = answering.every((n) => (results[n]?.answers || []).length);
+    if (diffExists) state = (type === "A" || type === "AAAA") && allAnswered ? "varies" : "split";
+    else if (failed.length) state = "partial";
+    const ttlBy = {};
+    for (const n of names) {
+      ttlBy[n] = new Map();
+      for (const a of results[n]?.answers || []) {
+        ttlBy[n].set(normalizeAnswer(a.data, type), a.TTL);
+      }
+    }
+    c.values.forEach((cv, i) => {
+      const value = String(cv.value);
+      const norm = normalizeAnswer(value, type);
+      const missing = answering.filter((n) => !cv.confirmedBy.includes(n));
+      const cells = names
+        .map((n) => {
+          const r = results[n];
+          if (r && r.error) return i === 0 ? errCell(n, r.error) : resCell(n, "", "res-err");
+          if (cv.confirmedBy.includes(n)) {
+            return resCell(
+              n,
+              '<span class="tick">' +
+                icon("tick") +
+                '<span class="sr-only">returned, TTL</span></span><span class="ttl">' +
+                esc(ttlBy[n].get(norm) ?? "") +
+                "</span>",
+            );
+          }
+          return resCell(
+            n,
+            '<span class="miss" aria-hidden="true"></span><span class="sr-only">not returned</span>',
+            "res-miss",
+            "Not returned by " + n,
+          );
+        })
+        .join("");
+      const diff = missing.length > 0 && state === "split";
+      rows.push(
+        '<tr class="rrow' +
+          (diff ? " diff" : "") +
+          '"><th scope="row" class="c-type">' +
+          (i === 0 ? "{TYPE}" : '<span class="sr-only">' + esc(type) + "</span>") +
+          '</th><td class="c-val"><span class="v">' +
+          (isIpValue(value) ? ipLink(value) : esc(value)) +
+          "</span></td>" +
+          cells +
+          '<td class="c-act">' +
+          copyButton(value, type + " value") +
+          "</td></tr>",
+      );
+    });
+    if (state === "split") stamp = badge("warn", "Split");
+    if (state === "varies")
+      stamp =
+        '<span class="badge badge-note" title="Every resolver answered, with different addresses. Normal for CDNs and geo-DNS.">Varies</span>';
+  } else {
+    const nx = answering.filter((n) => results[n]?.error);
+    let value = '<span class="empty">No ' + esc(type) + " records</span>";
+    if (!answering.length) {
+      state = "error";
+      const counts = {};
+      for (const n of failed) counts[results[n].error] = (counts[results[n].error] || 0) + 1;
+      const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      value = '<span class="empty txt-fail">No resolver answered: ' + esc(common) + "</span>";
+      stamp = badge("fail", "No answer");
+    } else if (nx.length === answering.length) {
+      state = "error";
+      value = '<span class="empty txt-fail">' + esc(results[nx[0]].error) + "</span>";
+      stamp = badge("fail", "NXDOMAIN");
+    } else if (nx.length) {
+      state = "split";
+      stamp = badge("warn", "Split");
+    } else {
+      state = failed.length ? "partial" : "empty";
+    }
+    const cells = names
+      .map((n) => (results[n]?.error ? errCell(n, results[n].error) : noDataCell(n)))
+      .join("");
+    rows.push(
+      '<tr class="rrow' +
+        (state === "split" ? " diff" : "") +
+        '"><th scope="row" class="c-type">{TYPE}</th><td class="c-val">' +
+        value +
+        "</td>" +
+        cells +
+        '<td class="c-act"></td></tr>',
+    );
+  }
+
+  const typeCell = '<span class="rtype">' + esc(type) + "</span>" + stamp;
+  const flag = GROUP_FLAG[state];
+  return (
+    '<tbody class="rgroup" id="record-' +
+    esc(type) +
+    '" data-state="' +
+    state +
+    '"' +
+    (flag ? ' data-flag="' + flag + '"' : "") +
+    ">" +
+    rows.join("").replace("{TYPE}", () => typeCell) +
+    "</tbody>"
+  );
+}
+
+// Every answering resolver said the name does not exist, for every type.
+// That is one fact, so it is shown once instead of once per record type.
+function nxGroup(dnsTypes, dnsData, names) {
+  const any = dnsData[dnsTypes[0]].resolvers;
+  const nxName = names.find((n) => any[n]?.error && !isFailure(any[n]));
+  const cells = names
+    .map((n) => {
+      const failures = dnsTypes.filter((t) => isFailure(dnsData[t].resolvers[n]));
+      return failures.length
+        ? errCell(n, dnsData[failures[0]].resolvers[n].error)
+        : errCell(n, any[nxName].error);
+    })
+    .join("");
+  return (
+    '<tbody class="rgroup" id="record-all" data-state="error" data-flag="fail"><tr class="rrow"><th scope="row" class="c-type"><span class="rtype">All</span>' +
+    badge("fail", "NXDOMAIN") +
+    '</th><td class="c-val"><span class="empty txt-fail">' +
+    esc(any[nxName].error) +
+    '</span><span class="nx-note">Asked for ' +
+    esc(dnsTypes.join(", ")) +
+    ". Check the spelling, or whether the domain is registered.</span></td>" +
+    cells +
+    '<td class="c-act"></td></tr></tbody>'
+  );
+}
+
+function registerTable(names, groups, caption) {
+  return (
+    '<div class="table-wrap"><table class="table register"><caption class="sr-only">' +
+    esc(caption) +
+    '</caption><thead><tr><th scope="col" class="c-type">Type</th><th scope="col" class="c-val">Value</th>' +
+    names
+      .map(
+        (n) =>
+          '<th scope="col" class="c-res" title="Tick and TTL from ' +
+          esc(n) +
+          '">' +
+          esc(n) +
+          "</th>",
+      )
+      .join("") +
+    '<th scope="col" class="c-act"><span class="sr-only">Copy</span></th></tr></thead>' +
+    groups +
+    "</table></div>"
+  );
+}
+
+// A row in the mail and CAA registers. Only out-of-range rows carry a stamp;
+// the rest show a quiet tick and a word.
 function checkRow(o) {
   const status = o.flag
     ? badge(o.flag, o.flagText)
-    : '<span class="dot">' + esc(o.okText || "OK") + "</span>";
-  const more = o.detail
-    ? '<button class="row-toggle" aria-expanded="false" aria-controls="' +
-      o.detailId +
-      '" data-action="toggle-row" data-value="' +
-      o.detailId +
-      '">Details' +
-      icon("chevron-down") +
-      "</button>"
-    : "";
+    : '<span class="ok-word">' + icon("tick") + esc(o.okText || "OK") + "</span>";
   return (
     '<tr class="check"' +
     (o.flag ? ' data-flag="' + o.flag + '"' : "") +
-    (o.id ? ' id="' + o.id + '"' : "") +
     '><th scope="row" class="c-check">' +
     esc(o.check) +
-    '</th><td class="c-result">' +
+    '</th><td class="c-ref">' +
+    o.ref +
+    '</td><td class="c-result">' +
     o.result +
     '</td><td class="c-flag">' +
     status +
-    '</td><td class="c-ref">' +
-    o.ref +
-    '</td><td class="c-more">' +
-    more +
-    "</td></tr>" +
-    (o.detail
-      ? '<tr class="check-detail" id="' +
-        o.detailId +
-        '" hidden><td colspan="5"><div class="detail-inner">' +
-        o.detail +
-        "</div></td></tr>"
-      : "")
+    "</td></tr>"
   );
 }
 
-function checksTable(rows, caption, first) {
+function checksTable(rows, caption) {
   return (
     '<div class="table-wrap"><table class="table checks"><caption class="sr-only">' +
     esc(caption) +
-    '</caption><thead><tr><th scope="col" class="c-check">' +
-    esc(first || "Type") +
-    '</th><th scope="col">Content</th>' +
-    '<th scope="col" class="c-flag">Status</th><th scope="col" class="c-ref">Source</th>' +
-    '<th scope="col" class="c-more"><span class="sr-only">Details</span></th></tr></thead><tbody>' +
+    '</caption><thead><tr><th scope="col" class="c-check">Record</th><th scope="col" class="c-ref">Queried</th>' +
+    '<th scope="col" class="c-result">Answer</th><th scope="col" class="c-flag">Result</th></tr></thead><tbody>' +
     rows +
     "</tbody></table></div>"
   );
 }
 
-function panel(id, title, desc, summary, body) {
+function panel(id, title, summary, body) {
   return (
     '<section class="card panel" id="panel-' +
     id +
     '" aria-labelledby="panel-' +
     id +
-    '-title"><div class="card-head"><div><h2 id="panel-' +
+    '-title"><div class="card-head"><h2 id="panel-' +
     id +
     '-title">' +
     esc(title) +
-    '</h2><p class="card-desc">' +
-    desc +
-    '</p></div><span class="card-meta panel-sum">' +
+    '</h2><span class="card-meta panel-sum">' +
     summary +
     '</span></div><div class="panel-body">' +
     body +
@@ -1204,13 +1380,13 @@ function setPanelBody(id, summary, body) {
   updateIndex();
 }
 
-// Flag counts in the sidebar and the status badge in the lookup header,
-// recomputed whenever a panel changes.
+// Flag counts in the section bar and the stamp in the lookup header,
+// recomputed whenever a section changes.
 function updateIndex() {
   let fails = 0;
   let warns = 0;
   let pending = 0;
-  for (const link of document.querySelectorAll("#sideSections a[data-panel]")) {
+  for (const link of document.querySelectorAll("#sectionBar a[data-panel]")) {
     const p = document.getElementById(link.dataset.panel);
     const count = link.querySelector(".count");
     if (!p || !count) continue;
@@ -1221,210 +1397,36 @@ function updateIndex() {
         '<span class="spinner" aria-hidden="true"></span><span class="sr-only">Pending</span>';
       continue;
     }
-    const f = p.querySelectorAll('.check[data-flag="fail"]').length;
-    const w = p.querySelectorAll('.check[data-flag="warn"]').length;
+    const f = p.querySelectorAll('[data-flag="fail"]').length;
+    const w = p.querySelectorAll('[data-flag="warn"]').length;
     fails += f;
     warns += w;
     const n = f + w;
-    count.className = "count" + (n ? " badge " + (f ? "badge-fail" : "badge-warn") : " ok");
+    count.className = "count" + (n ? (f ? " count-fail" : " count-warn") : "");
     count.innerHTML = n
       ? n + '<span class="sr-only"> flagged</span>'
-      : icon("check") + '<span class="sr-only">No issues</span>';
+      : esc(link.dataset.total || "") +
+        '<span class="sr-only"> ' +
+        esc(link.dataset.unit || "") +
+        ", none flagged</span>";
   }
+  // Resolver failures are flagged once, on the header's resolver cell.
+  fails += document.querySelectorAll('.zone [data-flag="fail"]').length;
+  warns += document.querySelectorAll('.zone [data-flag="warn"]').length;
+  const dns = document.getElementById("panel-dns");
+  if (dns)
+    dns.dataset.hasDiff = String(!!dns.querySelector('[data-state="split"], [data-state="error"]'));
   const status = document.getElementById("zoneStatus");
   if (!status) return;
   const n = fails + warns;
   if (n) {
-    status.outerHTML =
-      '<span id="zoneStatus">' +
-      badge(fails ? "fail" : "warn", n + (n === 1 ? " issue" : " issues")) +
-      "</span>";
+    status.innerHTML = badge(fails ? "fail" : "warn", n + (n === 1 ? " issue" : " issues"));
   } else if (pending) {
-    status.outerHTML =
-      '<span id="zoneStatus"><span class="badge"><span class="spinner" aria-hidden="true"></span>Checking</span></span>';
+    status.innerHTML =
+      '<span class="badge"><span class="spinner" aria-hidden="true"></span>Checking</span>';
   } else {
-    status.outerHTML = '<span id="zoneStatus">' + badge("ok", "No issues") + "</span>";
+    status.innerHTML = badge("ok", "No issues");
   }
-}
-
-function flaggedSummary(rowsHtml, n) {
-  const flagged = (rowsHtml.match(/data-flag="(warn|fail)"/g) || []).length;
-  return n + (n === 1 ? " check" : " checks") + (flagged ? " · " + flagged + " flagged" : "");
-}
-
-function agreementTitle(c) {
-  if (c.status === "varies")
-    return "Every resolver answered, with different addresses. Normal for CDNs and geo-DNS.";
-  if (c.status === "single") return "Only one resolver is active, so there is nothing to compare.";
-  return "";
-}
-
-// Only shown when a value did not come back from every resolver.
-function valueMeta(cv, c) {
-  if (cv.confirmedBy.length === c.total) return "";
-  const missing = c.resolvers.filter((r) => !cv.confirmedBy.includes(r));
-  return (
-    '<span class="val-meta' +
-    (c.status === "varies" ? " expected" : "") +
-    '">' +
-    cv.confirmedBy.length +
-    "/" +
-    c.total +
-    " · " +
-    esc(cv.confirmedBy.join(", ")) +
-    (missing.length ? " · not from " + esc(missing.join(", ")) : "") +
-    "</span>"
-  );
-}
-
-// DNS status words are the leading code of the resolver error ("NXDOMAIN (…)").
-function errorCode(err) {
-  return String(err).split(" (")[0];
-}
-
-function isIpValue(value) {
-  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(value);
-}
-
-// Per-resolver answers side by side. Values one resolver returned and
-// another did not are marked, so a split is visible without reading JSON.
-function resolverComparison(type, section, ipLink) {
-  const names = Object.keys(section.resolvers);
-  const sets = {};
-  for (const name of names) {
-    sets[name] = new Set(
-      (section.resolvers[name].answers || []).map((a) => normalizeAnswer(a.data, type)),
-    );
-  }
-  let html = '<div class="answers">';
-  for (const name of names) {
-    const rd = section.resolvers[name];
-    html +=
-      '<div class="answer"><div class="answer-head"><span class="resolver-name">' +
-      esc(name) +
-      '</span><span class="timing ' +
-      getTimingClass(rd.duration) +
-      '">' +
-      rd.duration +
-      " ms</span>" +
-      (!rd.error && rd.answers.length
-        ? copyButton(JSON.stringify(rd.answers, null, 2), name + " answer JSON")
-        : "") +
-      "</div>";
-    if (rd.error) {
-      html +=
-        '<div class="answer-error">' +
-        badge("fail", errorCode(rd.error)) +
-        "<span>" +
-        esc(rd.error) +
-        "</span></div>";
-    } else if (rd.answers.length) {
-      html +=
-        '<table class="answer-table"><thead><tr><th scope="col">Answer</th><th scope="col" class="a-ttl">TTL</th></tr></thead><tbody>';
-      for (const a of rd.answers) {
-        const norm = normalizeAnswer(a.data, type);
-        const missing = names.filter((n) => n !== name && !sets[n].has(norm));
-        const value = String(a.data ?? "");
-        html +=
-          '<tr><td class="a-data' +
-          (missing.length ? " differs" : "") +
-          '" data-norm="' +
-          esc(norm) +
-          '"' +
-          (missing.length ? ' title="Not returned by ' + esc(missing.join(", ")) + '"' : "") +
-          ">" +
-          (isIpValue(value) ? ipLink(value) : esc(value)) +
-          (missing.length
-            ? '<span class="differs-note">not from ' + esc(missing.join(", ")) + "</span>"
-            : "") +
-          '</td><td class="a-ttl">' +
-          esc(a.TTL ?? "") +
-          "</td></tr>";
-      }
-      html += "</tbody></table>";
-    } else {
-      html += '<p class="answer-empty">No records</p>';
-    }
-    html += "</div>";
-  }
-  return html + "</div>";
-}
-
-function dnsRow(type, section, ipLink) {
-  const c = section.consensus;
-  const results = Object.values(section.resolvers);
-  const total = results.length;
-  const row = { check: type, id: "record-" + type, detailId: "detail-" + type };
-
-  if (c && c.values && c.values.length) {
-    // Long answer sets (TXT on big domains) show the first few values; the
-    // rest open in place, and the resolver comparison always has them all.
-    const SHOWN = 5;
-    let html = '<ul class="values" id="values-' + type + '">';
-    c.values.forEach((cv, i) => {
-      const value = String(cv.value);
-      // Only values that are entirely an IP address become links; anything
-      // else (TXT with a colon, for instance) stays plain escaped text.
-      html +=
-        '<li class="val"' +
-        (i >= SHOWN ? " hidden" : "") +
-        '><span class="v"><span class="v-text" title="' +
-        esc(value) +
-        '">' +
-        (isIpValue(value) ? ipLink(value) : esc(value)) +
-        "</span>" +
-        valueMeta(cv, c) +
-        "</span>" +
-        copyButton(value, type + " value") +
-        "</li>";
-    });
-    html += "</ul>";
-    if (c.values.length > SHOWN) {
-      html +=
-        '<button class="link-btn show-more" data-action="show-more" data-value="values-' +
-        esc(type) +
-        '">Show ' +
-        (c.values.length - SHOWN) +
-        " more</button>";
-    }
-    for (const f of c.failed) {
-      html += '<p class="fail-line">' + esc(f.resolver) + ": " + esc(f.error) + "</p>";
-    }
-    row.result = html;
-    if (c.status === "agree") {
-      row.okText = "Agree";
-      row.ref = c.total + "/" + c.total + " resolvers";
-    } else if (c.status === "single") {
-      row.okText = "Answered";
-      row.ref = "1 resolver";
-    } else if (c.status === "varies") {
-      row.flag = "note";
-      row.flagText = "Varies";
-      row.ref = '<span title="' + esc(agreementTitle(c)) + '">Expected for CDNs</span>';
-    } else {
-      row.flag = "warn";
-      row.flagText = "Split";
-      row.ref = "Resolvers disagree";
-    }
-  } else {
-    const errors = results.filter((r) => r.error).map((r) => r.error);
-    if (errors.length) {
-      const counts = {};
-      for (const e of errors) counts[e] = (counts[e] || 0) + 1;
-      const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-      row.flag = "fail";
-      row.flagText = errorCode(common);
-      row.result = '<span class="empty">' + esc(common) + "</span>";
-      row.ref = errors.length + "/" + total + " resolvers";
-    } else {
-      row.okText = total === 1 ? "Answered" : "Agree";
-      row.result = '<span class="empty">No ' + esc(type) + " records</span>";
-      row.ref = total === 1 ? "1 resolver" : total + "/" + total + " resolvers";
-    }
-  }
-
-  row.detail = resolverComparison(type, section, ipLink);
-  return checkRow(row);
 }
 
 const MAIL_FLAG = {
@@ -1442,17 +1444,15 @@ function mailRow(check, state, status, note, record, ref) {
     flagText,
     okText: "Found",
     result:
-      '<div class="status-line">' +
-      esc(status) +
-      "</div>" +
-      (note ? '<p class="check-note">' + esc(note) + "</p>" : "") +
       (record
         ? '<div class="record"><pre>' +
           esc(record) +
           "</pre>" +
           copyButton(record, check + " record") +
           "</div>"
-        : ""),
+        : '<div class="status-line">' + esc(status) + "</div>") +
+      (record && state === "warn" ? '<div class="status-line">' + esc(status) + "</div>" : "") +
+      (note ? '<p class="check-note">' + esc(note) + "</p>" : ""),
     ref: '<span class="mono">' + esc(ref) + "</span>",
   });
 }
@@ -1482,47 +1482,84 @@ function rdapSource() {
   return userSettings.advanced.rdapServer.replace(/^https?:\/\//, "").split("/")[0];
 }
 
-const PANEL_ICON = { dns: "globe", mail: "mail", registry: "registry", tls: "lock" };
+function cell(label, value, cls, flag) {
+  return (
+    '<div class="cell' +
+    (cls ? " " + cls : "") +
+    '"' +
+    (flag ? ' data-flag="' + flag + '"' : "") +
+    '><dt class="label">' +
+    label +
+    "</dt><dd>" +
+    value +
+    "</dd></div>"
+  );
+}
 
 function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, ctx) {
   const container = document.getElementById("results");
+  const names = ctx.resolvers;
 
   // IP values become buttons that open the IP info modal.
   function ipLink(ip) {
     return (
       '<button type="button" class="ip-link" data-action="ip" data-value="' +
-      ip +
+      esc(ip) +
       '" title="Network and location for ' +
-      ip +
+      esc(ip) +
       '">' +
-      ip +
+      esc(ip) +
       "</button>"
     );
   }
 
-  const showMail = userSettings.features.enableSecurity && !isReverse;
-  const showRegistry = userSettings.features.enableWhois && !isReverse;
-  const showTls = !isReverse && (showMail || userSettings.features.enableSsl);
-  const subdomain = !isReverse && isSubdomain(domain);
-  const resolverNames = esc(ctx.resolvers.join(", "));
-
-  // DNS: CAA lives in the TLS panel unless it was chosen as a record type.
+  // DNS: CAA lives in the TLS section unless it was chosen as a record type.
+  const caaInTls = userSettings.features.enableSecurity && !isReverse;
   const dnsTypes = typesRendered.filter(
-    (t) => dnsData[t] && !(t === "CAA" && showMail && !userSettings.defaultRecords.includes("CAA")),
+    (t) => dnsData[t] && !(t === "CAA" && caaInTls && !userSettings.defaultRecords.includes("CAA")),
   );
-  const dnsRows = dnsTypes.map((t) => dnsRow(t, dnsData[t], ipLink)).join("");
-  const dnsTitle = isReverse ? "Reverse DNS" : "DNS records";
+  // A name that does not exist has no mail policy or CAA to check.
+  const allNx =
+    dnsTypes.length > 0 &&
+    dnsTypes.every((t) => {
+      const rs = Object.values(dnsData[t].resolvers);
+      return (
+        !dnsData[t].consensus &&
+        rs.some((r) => r.error && !isFailure(r)) &&
+        rs.every((r) => r.error)
+      );
+    });
+  const showMail = userSettings.features.enableSecurity && !isReverse && !allNx;
+  const showRegistry = userSettings.features.enableWhois && !isReverse;
+  const showTls = !isReverse && !allNx && (showMail || userSettings.features.enableSsl);
+  const subdomain = !isReverse && isSubdomain(domain);
+  const answers = dnsTypes.reduce(
+    (sum, t) => sum + (dnsData[t].consensus ? dnsData[t].consensus.values.length : 0),
+    0,
+  );
   const panels = [];
   if (dnsTypes.length || isReverse) {
     panels.push({
       id: "dns",
-      title: isReverse ? "Reverse DNS" : "DNS",
+      title: isReverse ? "Reverse DNS" : "Records",
+      total: dnsTypes.length,
+      unit: "types",
       html: panel(
         "dns",
-        dnsTitle,
-        "Answers from " + resolverNames + ". Open a row to compare resolvers side by side.",
-        flaggedSummary(dnsRows, dnsTypes.length),
-        checksTable(dnsRows, "DNS records by type"),
+        isReverse ? "Reverse DNS" : "Records",
+        '<span class="mono">' +
+          dnsTypes.length +
+          "</span> types · " +
+          '<span class="mono">' +
+          answers +
+          "</span> answers",
+        registerTable(
+          names,
+          allNx
+            ? nxGroup(dnsTypes, dnsData, names)
+            : dnsTypes.map((t) => recordGroup(t, dnsData[t], names, ipLink)).join(""),
+          "DNS records by type, with the TTL each resolver returned",
+        ) + '<p class="filter-empty">Every resolver returned the same answers for every type.</p>',
       ),
     });
   }
@@ -1551,7 +1588,7 @@ function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, 
       rows += mailRow(
         "DMARC",
         monitoring ? "warn" : "found",
-        "Found" + (dmarcPolicy ? " · p=" + dmarcPolicy : ""),
+        monitoring ? "p=none" : "Found",
         monitoring ? "Monitoring only: failing mail is still delivered." : "",
         sec.dmarc[0],
         "TXT " + dmarcName,
@@ -1589,26 +1626,27 @@ function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, 
     panels.push({
       id: "mail",
       title: "Mail",
+      total: 3,
+      unit: "checks",
       html: panel(
         "mail",
         "Mail",
-        "Sender policy and authentication records, read from TXT.",
-        flaggedSummary(rows, 3),
-        checksTable(rows, "Mail records", "Record"),
+        '<span class="mono">3</span> checks',
+        checksTable(rows, "Mail records"),
       ),
     });
   }
 
   if (showRegistry) {
-    const source = esc(rdapSource());
     panels.push({
       id: "registry",
       title: "Registry",
+      total: "",
+      unit: "",
       html: panel(
         "registry",
         "Registry",
-        "Registration data from RDAP, the successor to WHOIS.",
-        "via " + source,
+        "RDAP · " + esc(rdapSource()),
         subdomain
           ? skippedNote("Registry data", domain)
           : ctx.whoisPending
@@ -1620,7 +1658,7 @@ function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, 
 
   if (showTls) {
     let body = showMail
-      ? checksTable(caaRow(dnsData, domain), "Certificate authority authorization", "Record")
+      ? checksTable(caaRow(dnsData, domain), "Certificate authority authorization")
       : "";
     if (userSettings.features.enableSsl) {
       body +=
@@ -1632,71 +1670,269 @@ function renderResults(dnsData, typesRendered, domain, isReverse, dmarcResults, 
             : "") +
         "</div>";
     }
-    const parts = [];
-    if (showMail) parts.push("Which authorities may issue (CAA)");
-    if (userSettings.features.enableSsl)
-      parts.push((showMail ? "and r" : "R") + "ecent certificates from Certificate Transparency");
     panels.push({
       id: "tls",
       title: "TLS",
-      html: panel("tls", "TLS", esc(parts.join(" ")) + ".", "", body),
+      total: "",
+      unit: "",
+      html: panel(
+        "tls",
+        "TLS",
+        showMail ? "CAA" + (userSettings.features.enableSsl ? " · CT logs" : "") : "CT logs",
+        body,
+      ),
     });
   }
 
-  const time = new Date(latestData.timestamp).toLocaleTimeString();
+  // The slowest answer per resolver across every type asked, and how many
+  // types it failed to answer at all. A failing resolver is one issue,
+  // reported here once rather than on every record type.
+  const slowest = {};
+  const failures = {};
+  const asked = Object.keys(dnsData);
+  for (const t of asked) {
+    for (const [n, r] of Object.entries(dnsData[t].resolvers)) {
+      slowest[n] = Math.max(slowest[n] || 0, r.duration || 0);
+      if (isFailure(r)) failures[n] = (failures[n] || []).concat(r.error);
+    }
+  }
+  const failing = names.filter((n) => failures[n]);
   const curl = curlFor(domain);
+  const kind = isReverse
+    ? 'Reverse (PTR) · <span class="mono">' + esc(latestData.query) + "</span>"
+    : subdomain
+      ? "Subdomain"
+      : "Domain";
   const head =
-    '<div class="page-head zone-head"><div class="zone-id">' +
-    '<div class="crumbs"><button class="link-btn" onclick="goHome()">Lookups</button>' +
-    icon("chevron") +
-    "<span>" +
-    (isReverse ? "Reverse lookup" : isSubdomain(domain) ? "Subdomain" : "Domain") +
-    "</span></div>" +
-    '<div class="zone-title"><h1 class="zone-name">' +
+    '<header class="zone"><div class="zone-title"><h1 class="zone-name mono">' +
     esc(domain) +
-    '</h1><span id="zoneStatus"></span></div>' +
-    '<p class="zone-meta">' +
-    icon("clock") +
-    "<span>" +
-    esc(time) +
-    "</span><span>·</span><span>" +
-    resolverNames +
-    "</span><span>·</span><span>" +
-    typesRendered.length +
-    (typesRendered.length === 1 ? " record type" : " record types") +
-    "</span></p></div>" +
-    '<div class="zone-actions">' +
-    '<button class="btn" onclick="exportResultJSON()">' +
+    '</h1><span id="zoneStatus" class="zone-status" aria-live="polite"></span></div>' +
+    '<dl class="cells zone-cells">' +
+    cell("Kind", kind) +
+    cell(
+      "Resolvers · slowest answer",
+      names
+        .map(
+          (n) =>
+            '<span class="res-time">' +
+            esc(n) +
+            ' <span class="mono ' +
+            getTimingClass(slowest[n] || 0) +
+            '">' +
+            (slowest[n] || 0) +
+            " ms</span>" +
+            (failures[n]
+              ? ' <span class="res-fail" title="' +
+                esc(failures[n][0]) +
+                '">' +
+                esc(shortError(failures[n][0])) +
+                " on " +
+                failures[n].length +
+                "/" +
+                asked.length +
+                "</span>"
+              : "") +
+            "</span>",
+        )
+        .join(""),
+      "",
+      failing.length ? (failing.length === names.length ? "fail" : "warn") : "",
+    ) +
+    cell("Queried (UTC)", '<span class="mono">' + esc(isoUtc(latestData.timestamp)) + "</span>") +
+    cell(
+      "From a terminal",
+      '<code class="mono">' + esc(curl) + "</code>" + copyButton(curl, "curl command"),
+      "cell-wide",
+    ) +
+    "</dl></header>";
+
+  const hasDns = panels.some((p) => p.id === "dns");
+  const bar =
+    '<div class="sectionbar" id="sectionBar"><nav class="sections" aria-label="Sections">' +
+    panels
+      .map(
+        (p) =>
+          '<a href="#panel-' +
+          p.id +
+          '" data-panel="panel-' +
+          p.id +
+          '" data-total="' +
+          esc(p.total) +
+          '" data-unit="' +
+          esc(p.unit) +
+          '">' +
+          esc(p.title) +
+          '<span class="count"></span></a>',
+      )
+      .join("") +
+    '</nav><div class="bar-tools">' +
+    (hasDns
+      ? '<label class="filter" title="Shortcut: D"><input type="checkbox" id="onlyDiff"><span class="box" aria-hidden="true">' +
+        icon("tick") +
+        "</span>Only disagreements</label>"
+      : "") +
+    '<div class="segmented" id="viewSwitch" role="radiogroup" aria-label="View">' +
+    '<label title="Shortcut: 1"><input type="radio" name="resultView" value="form" checked><span>Form</span></label>' +
+    '<label title="Shortcut: 2"><input type="radio" name="resultView" value="zone"><span>Zone</span></label>' +
+    '<label title="Shortcut: 3"><input type="radio" name="resultView" value="json"><span>JSON</span></label>' +
+    "</div>" +
+    '<button class="btn" onclick="exportResultJSON()" title="Download this lookup as JSON" aria-label="Export JSON">' +
     icon("download") +
-    "Export JSON</button>" +
-    '<button class="btn btn-primary" data-action="rerun">' +
+    '<span class="btn-text">Export</span></button>' +
+    '<button class="btn btn-primary" data-action="rerun" title="Ask every resolver again" aria-label="Run again">' +
     icon("refresh") +
-    "Run again</button></div></div>" +
-    '<div class="code curl-strip"><span class="prompt">$</span><code>' +
-    esc(curl) +
-    "</code>" +
-    copyButton(curl, "curl command") +
-    "</div>";
+    '<span class="btn-text">Run again</span></button>' +
+    "</div></div>";
 
-  document.getElementById("sideDomain").textContent = domain;
-  document.getElementById("sideSections").innerHTML = panels
-    .map(
-      (p) =>
-        '<a class="side-item" href="#panel-' +
-        p.id +
-        '" data-panel="panel-' +
-        p.id +
-        '">' +
-        icon(PANEL_ICON[p.id]) +
-        '<span class="side-text">' +
-        esc(p.title) +
-        '</span><span class="count"></span></a>',
-    )
-    .join("");
-  document.getElementById("sideReport").classList.toggle("hidden", currentView !== "results");
-
-  container.innerHTML = head + panels.map((p) => p.html).join("");
+  container.innerHTML =
+    head +
+    bar +
+    '<div id="formView">' +
+    panels.map((p) => p.html).join("") +
+    '</div><div id="zoneView" class="alt-view" hidden></div><div id="jsonView" class="alt-view" hidden></div>';
   updateIndex();
+}
+
+// ===== FILTER AND VIEWS =====
+function setOnlyDiff(on) {
+  const view = document.getElementById("formView");
+  if (view) view.classList.toggle("only-diff", on);
+}
+
+function setResultView(view) {
+  const radio = document.querySelector('input[name="resultView"][value="' + view + '"]');
+  if (!radio || !latestData) return;
+  radio.checked = true;
+  document.getElementById("formView").hidden = view !== "form";
+  document.getElementById("zoneView").hidden = view !== "zone";
+  document.getElementById("jsonView").hidden = view !== "json";
+  const filter = document.querySelector(".filter");
+  if (filter) filter.classList.toggle("is-off", view !== "form");
+  if (view === "zone") renderZoneView();
+  if (view === "json") renderJsonView();
+}
+
+function altViewHead(label, meta, copyText, copyLabel) {
+  return (
+    '<div class="alt-head"><span class="label">' +
+    esc(label) +
+    '</span><span class="alt-meta">' +
+    meta +
+    "</span>" +
+    (copyText
+      ? '<button class="copy-btn labelled" data-action="copy" data-value="' +
+        esc(copyText) +
+        '" aria-label="Copy ' +
+        esc(copyLabel) +
+        '">' +
+        icon("copy") +
+        "Copy</button>"
+      : "") +
+    "</div>"
+  );
+}
+
+// The answers in zone-file notation: name, TTL, class, type, data. The TTL is
+// the first resolver's; answers only some resolvers returned are marked.
+function zoneText() {
+  const d = latestData;
+  const name = d.query.endsWith(".") ? d.query : d.query + ".";
+  const types = Object.keys(d.dns);
+  const names = types.length ? Object.keys(d.dns[types[0]].resolvers) : [];
+  const lines = ["; " + d.domain + "  " + isoUtc(d.timestamp), "; resolvers: " + names.join(", ")];
+  for (const type of types) {
+    const sec = d.dns[type];
+    const c = sec.consensus;
+    lines.push("");
+    if (!c) {
+      const errs = Object.values(sec.resolvers).filter((r) => r.error);
+      lines.push(
+        errs.length
+          ? "; " + type + "  " + errs.map((r) => r.resolver + ": " + errorCode(r.error)).join(", ")
+          : "; " + type + "  NODATA",
+      );
+      continue;
+    }
+    for (const cv of c.values) {
+      const norm = normalizeAnswer(cv.value, type);
+      const from = sec.resolvers[cv.confirmedBy[0]];
+      const answer = (from.answers || []).find((a) => normalizeAnswer(a.data, type) === norm);
+      const data =
+        type === "TXT" || type === "SPF"
+          ? '"' + String(cv.value).replace(/"/g, '\\"') + '"'
+          : cv.value;
+      lines.push(
+        name +
+          "\t" +
+          (answer ? answer.TTL : "") +
+          "\tIN\t" +
+          type +
+          "\t" +
+          data +
+          (cv.confirmedBy.length < c.total ? "\t; only " + cv.confirmedBy.join(", ") : ""),
+      );
+    }
+    for (const f of c.failed)
+      lines.push("; " + type + "  " + f.resolver + ": " + errorCode(f.error));
+  }
+  return lines.join("\n") + "\n";
+}
+
+function renderZoneView() {
+  const text = zoneText();
+  document.getElementById("zoneView").innerHTML =
+    altViewHead(
+      "Zone file notation",
+      "TTL from the first resolver that returned each answer",
+      text,
+      "zone text",
+    ) +
+    '<pre class="alt-pre">' +
+    esc(text) +
+    "</pre>";
+}
+
+// The API's own answer for the same URL, which is what the curl line returns.
+async function renderJsonView() {
+  const el = document.getElementById("jsonView");
+  const d = latestData;
+  const path = "/" + encodeURI(d.domain) + "?preview";
+  if (d.apiJson) {
+    el.innerHTML =
+      altViewHead("GET " + path, d.apiJson.meta, d.apiJson.body, "API response") +
+      '<pre class="alt-pre">' +
+      esc(d.apiJson.body) +
+      "</pre>";
+    return;
+  }
+  el.innerHTML =
+    altViewHead("GET " + path, "Requesting…") + pendingNote("Asking the API for the same lookup…");
+  const started = Date.now();
+  try {
+    const res = await fetch(path, { headers: { accept: "application/json" } });
+    const body = await res.text();
+    if (latestData !== d) return;
+    d.apiJson = {
+      body,
+      meta:
+        '<span class="mono">' +
+        res.status +
+        "</span> · " +
+        '<span class="mono">' +
+        (Date.now() - started) +
+        " ms</span> · the API's default resolvers",
+    };
+    renderJsonView();
+  } catch (err) {
+    if (latestData !== d) return;
+    el.innerHTML =
+      altViewHead("GET " + path, "Failed") +
+      '<p class="panel-note">' +
+      badge("fail", "Error") +
+      "<span>The API did not answer: " +
+      esc(err.message) +
+      "</span></p>";
+  }
 }
 
 function rawJson(label, json) {
@@ -1717,76 +1953,106 @@ function rawJson(label, json) {
 
 function renderWhoisCard(whoisData, domain) {
   if (!document.getElementById("panel-registry")) return;
-  const source = esc(rdapSource());
+  const source = "RDAP · " + esc(rdapSource());
   if (!whoisData || whoisData.error) {
     setPanelBody(
       "registry",
-      "via " + source,
-      '<div class="panel-note">' +
-        icon("warn") +
-        "<span>No registry data: " +
+      source,
+      '<p class="panel-note">' +
+        badge("warn", "No data") +
+        "<span>" +
+        esc(rdapSource()) +
+        " did not return registry data: " +
         esc((whoisData && whoisData.error) || "no response") +
-        "</span></div>",
+        "</span></p>",
     );
     return;
   }
   const name = whoisData.ldhName || whoisData.handle || domain;
-  const status = (whoisData.status || []).join(", ") || "Unknown";
+  const statuses = whoisData.status || [];
   const events = whoisData.events || [];
-  const date = (action) => {
+  const eventDate = (action) => {
     const e = events.find((ev) => ev.eventAction === action);
-    return e ? new Date(e.eventDate).toLocaleDateString() : null;
+    return e ? e.eventDate : null;
   };
   const nameservers = (whoisData.nameservers || [])
     .map((ns) => ns.ldhName || ns.objectClassName)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((ns) => ns.toLowerCase());
   const registrar = (whoisData.entities || []).find((e) => (e.roles || []).includes("registrar"));
   const registrarName =
     registrar && registrar.vcardArray
       ? (registrar.vcardArray[1] || []).find((v) => v[0] === "fn")?.[3]
       : null;
 
-  const fact = (label, value, mono) =>
-    value
-      ? "<div><dt>" +
-        label +
-        "</dt><dd" +
-        (mono ? ' class="mono"' : "") +
-        ">" +
-        esc(value) +
-        "</dd></div>"
-      : "";
+  const mono = (v) => '<span class="mono">' + esc(v) + "</span>";
+  const expires = eventDate("expiration");
+  let expiresHtml = "Unknown";
+  let expiresFlag = "";
+  if (expires) {
+    const days = Math.floor((new Date(expires) - Date.now()) / 86400000);
+    expiresHtml =
+      mono(isoDate(expires)) +
+      ' <span class="rel">' +
+      (days < 0 ? Math.abs(days) + " days ago" : "in " + days + " days") +
+      "</span>";
+    if (days < 0) {
+      expiresFlag = "fail";
+      expiresHtml += " " + badge("fail", "Expired");
+    } else if (days < 30) {
+      expiresFlag = "warn";
+      expiresHtml += " " + badge("warn", "Soon");
+    }
+  }
+  const dateCell = (label, action) => {
+    const v = eventDate(action);
+    return cell(label, v ? mono(isoDate(v)) : '<span class="empty">Unknown</span>');
+  };
+
   setPanelBody(
     "registry",
-    "via " + source + (whoisData._latency ? " · " + esc(whoisData._latency) + " ms" : ""),
-    '<dl class="kv">' +
-      fact("Domain", name, true) +
-      fact("Registrar", registrarName) +
-      fact("Status", status) +
-      fact("Registered", date("registration"), true) +
-      fact("Expires", date("expiration"), true) +
-      fact("Updated", date("last changed"), true) +
-      fact("Nameservers", nameservers.join(", "), true) +
+    source +
+      (whoisData._latency ? ' · <span class="mono">' + esc(whoisData._latency) + " ms</span>" : ""),
+    '<dl class="cells reg-cells">' +
+      cell("Domain", mono(String(name).toLowerCase())) +
+      cell("Registrar", registrarName ? esc(registrarName) : '<span class="empty">Unknown</span>') +
+      dateCell("Registered", "registration") +
+      cell("Expires", expiresHtml, "", expiresFlag) +
+      dateCell("Updated", "last changed") +
+      cell(
+        "Status",
+        statuses.length
+          ? statuses.map((s) => '<span class="line">' + esc(s) + "</span>").join("")
+          : '<span class="empty">None listed</span>',
+        "cell-wide",
+      ) +
+      cell(
+        "Nameservers",
+        nameservers.length
+          ? nameservers.map((ns) => '<span class="line mono">' + esc(ns) + "</span>").join("")
+          : '<span class="empty">None listed</span>',
+        "cell-wide",
+      ) +
       "</dl>" +
       rawJson("Raw RDAP response", JSON.stringify(whoisData, null, 2)),
   );
 }
 
-function renderSslCard(sslData, domain) {
+function renderSslCard(sslData) {
   const panelEl = document.getElementById("panel-tls");
   const slot = panelEl && panelEl.querySelector(".tls-certs");
   if (!slot) return;
   const source = userSettings.advanced.sslProvider === "crt.sh" ? "crt.sh" : "CertSpotter";
 
   let html =
-    '<div class="panel-sub"><h3>Recent certificates</h3><span>via ' + esc(source) + "</span></div>";
+    '<div class="panel-sub"><h3>Recent certificates</h3><span class="card-meta">' +
+    esc(source) +
+    "</span></div>";
   if (!sslData || sslData.error || (Array.isArray(sslData) && sslData.length === 0)) {
     html +=
-      '<div class="panel-note">' +
-      icon("info") +
-      "<span>" +
+      '<p class="panel-note">' +
       esc((sslData && sslData.error) || "No certificates found in the logs.") +
-      "</span></div>";
+      "</p>";
   } else {
     const records = Array.isArray(sslData) ? sslData.slice(0, 10) : [];
     // CertSpotter answers without issuers; drop the column rather than fill it with "Unknown".
@@ -1794,28 +2060,30 @@ function renderSslCard(sslData, domain) {
     let rows = "";
     for (const rec of records) {
       const subjects = rec.dns_names
-        ? rec.dns_names.join(", ")
-        : (rec.name_value || "Unknown").replace(/\n/g, ", ");
-      const from = rec.not_before ? new Date(rec.not_before).toLocaleDateString() : "Unknown";
-      const until = rec.not_after ? new Date(rec.not_after).toLocaleDateString() : "Unknown";
+        ? rec.dns_names
+        : (rec.name_value || "Unknown").split("\n").filter(Boolean);
+      const expired = rec.not_after && new Date(rec.not_after) < new Date();
       let issuer = rec.issuer_name || (rec.issuer && rec.issuer.name) || "Unknown issuer";
       if (issuer.includes("CN=")) issuer = issuer.split("CN=")[1].split(",")[0];
       else if (issuer.includes("O=")) issuer = issuer.split("O=")[1].split(",")[0];
       rows +=
-        '<tr><td class="c-names mono">' +
-        esc(subjects) +
+        "<tr" +
+        (expired ? ' class="expired"' : "") +
+        '><td class="c-names mono">' +
+        subjects.map((s) => '<span class="line">' + esc(s) + "</span>").join("") +
         (hasIssuer ? '</td><td data-label="Issuer">' + esc(issuer) : "") +
-        '</td><td class="c-date mono" data-label="From">' +
-        esc(from) +
-        '</td><td class="c-date mono" data-label="Until">' +
-        esc(until) +
+        '</td><td class="c-date mono" data-label="Not before">' +
+        esc(rec.not_before ? isoDate(rec.not_before) : "Unknown") +
+        '</td><td class="c-date mono" data-label="Not after">' +
+        esc(rec.not_after ? isoDate(rec.not_after) : "Unknown") +
+        (expired ? ' <span class="badge badge-note">Expired</span>' : "") +
         "</td></tr>";
     }
     html +=
       '<div class="table-wrap"><table class="table certs"><caption class="sr-only">Recent certificates</caption><thead><tr>' +
       '<th scope="col">Hostnames</th>' +
       (hasIssuer ? '<th scope="col" class="c-issuer">Issuer</th>' : "") +
-      '<th scope="col" class="c-date">Valid from</th><th scope="col" class="c-date">Valid until</th>' +
+      '<th scope="col" class="c-date">Not before</th><th scope="col" class="c-date">Not after</th>' +
       "</tr></thead><tbody>" +
       rows +
       "</tbody></table></div>" +
@@ -1823,15 +2091,6 @@ function renderSslCard(sslData, domain) {
   }
   slot.innerHTML = html;
   updateIndex();
-}
-
-function toggleRow(detailId, btn) {
-  const row = document.getElementById(detailId);
-  if (!row) return;
-  const open = row.hidden;
-  row.hidden = !open;
-  btn.setAttribute("aria-expanded", String(open));
-  row.previousElementSibling?.classList.toggle("expanded", open);
 }
 
 // ===== IP MODAL =====
@@ -1967,3 +2226,14 @@ if (domainToLookup) {
   document.getElementById("domainHome").value = domainToLookup;
   triggerLookup("domainHome");
 }
+
+// Back and forward move between lookups instead of leaving the app.
+window.addEventListener("popstate", () => {
+  const q = new URLSearchParams(location.search).get("domain");
+  if (q) {
+    document.getElementById("domainHome").value = q;
+    triggerLookup("domainHome", true);
+  } else {
+    goHome(true);
+  }
+});
