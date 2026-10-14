@@ -8,7 +8,7 @@ A public instance runs at [lookup.itzemoji.com](https://lookup.itzemoji.com):
 ```console
 $ curl https://lookup.itzemoji.com/example.com          # every record, consensus, WHOIS
 $ curl https://lookup.itzemoji.com/ipv4/example.com     # 93.184.215.14
-$ curl https://lookup.itzemoji.com/help                 # full reference
+$ curl https://lookup.itzemoji.com/openapi.json         # every endpoint, as OpenAPI 3.1
 ```
 
 To run your own, deploy it to your Cloudflare account:
@@ -29,12 +29,12 @@ To run your own, deploy it to your Cloudflare account:
 | `GET /propagated/{domain}` | `true` if all resolvers agree. |
 | `GET /ssl/{domain}` | Certificate history (`?provider=certspotter` or `crt.sh`). |
 | `GET /security/{domain}` | SPF, DMARC and CAA records; `?dkim=<selector>,...` adds DKIM keys. |
-| `GET /help`, `/api-docs` | Reference and an interactive playground. |
+| `GET /api-docs` | API reference drawn from `/openapi.json`, with a request runner. |
 | `GET /openapi.json` | OpenAPI 3.1 description of every endpoint, with the deployment's own URL as its server. |
 
 Every API endpoint accepts `?resolvers=<url>,<url>` to query your own
-DNS-over-HTTPS resolvers instead of Cloudflare and Google, and `?preview` to
-pretty-print JSON.
+DNS-over-HTTPS resolvers instead of Cloudflare and Google, and `?preview` (or
+`?preview=true`) to pretty-print JSON; responses are compact otherwise.
 
 Browser page navigations get the web app; every other request gets the API,
 so HTTP libraries, Postman and generated clients work without extra headers.

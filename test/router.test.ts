@@ -51,12 +51,16 @@ describe("browsers", () => {
     expect(res.headers.get("location")).toBe(`${ORIGIN}/?domain=example.com`);
   });
 
-  test("get HTML help and API docs", async () => {
-    expect(await (await get("/help", BROWSER)).text()).toContain(
-      "<title>nslookup CLI Help</title>",
-    );
+  test("get the API page, which draws itself from /openapi.json", async () => {
     const docs = await (await get("/api-docs", BROWSER)).text();
     expect(docs).toContain(`const BASE_URL = '${ORIGIN}';`);
+    expect(docs).toContain('fetch("/openapi.json"');
+  });
+
+  test("are sent from the old /help page to the API page", async () => {
+    const res = await get("/help", BROWSER);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/api-docs`);
   });
 });
 
@@ -71,10 +75,10 @@ describe("API clients", () => {
     expect(await res.text()).toBe("203.0.113.9\n");
   });
 
-  test("/help is a plain-text man page for curl", async () => {
+  test("/help redirects curl to the API page too", async () => {
     const res = await get("/help");
-    expect(res.headers.get("content-type")).toBe("text/plain");
-    expect(await res.text()).toContain(`curl ${ORIGIN}/example.com`);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/api-docs`);
   });
 
   test.each([

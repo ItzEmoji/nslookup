@@ -7,16 +7,10 @@ export interface RequestContext {
   url: URL;
   /** Resolvers to query: the defaults, or `Custom1..n` from `?resolvers=`. */
   resolvers: Resolvers;
-  /** JSON indentation; `?preview` pretty-prints responses. */
+  /** JSON indentation; `?preview` or `?preview=true` pretty-prints responses. */
   jsonSpace: number | undefined;
   /** True for API clients (curl, fetch, JSON accept), false for browser navigation. */
   wantsApi: boolean;
-}
-
-const CLI_USER_AGENT = /curl|wget|httpie/i;
-
-export function isCliClient(request: Request): boolean {
-  return CLI_USER_AGENT.test(request.headers.get("user-agent") ?? "");
 }
 
 /**
@@ -40,13 +34,19 @@ function resolversFrom(url: URL): Resolvers {
   );
 }
 
+/** `?preview` and `?preview=true` pretty-print; `?preview=false` or `0` don't. */
+function wantsPreview(url: URL): boolean {
+  const value = url.searchParams.get("preview");
+  return value !== null && !["false", "0"].includes(value.toLowerCase());
+}
+
 export function createContext(request: Request): RequestContext {
   const url = new URL(request.url);
   return {
     request,
     url,
     resolvers: resolversFrom(url),
-    jsonSpace: url.searchParams.has("preview") ? 2 : undefined,
+    jsonSpace: wantsPreview(url) ? 2 : undefined,
     wantsApi: wantsApiResponse(request),
   };
 }

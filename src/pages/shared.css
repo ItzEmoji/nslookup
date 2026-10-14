@@ -1,4 +1,4 @@
-/* Shared design system for the app, /help and /api-docs: Cloudflare-style
+/* Shared design system for the app and /api-docs: Cloudflare-style
    tokens, the top bar, white cards on a grey canvas, tables, buttons and
    badges. Inlined into each page at build time by src/pages/index.ts. */
 *,
@@ -655,6 +655,7 @@ select.settings-input {
   display: flex;
   align-items: center;
   gap: 2px;
+  margin-left: auto;
 }
 .topbar .icon-btn {
   color: var(--text-2);
@@ -868,31 +869,6 @@ select.settings-input {
 .card-body.flush {
   padding: 0;
 }
-.card-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 10px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 13px;
-}
-.card-foot .spacer {
-  flex: 1;
-}
-.card-foot a {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-weight: 500;
-}
-.card-foot a .icon {
-  width: 14px;
-  height: 14px;
-}
-
 .set-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

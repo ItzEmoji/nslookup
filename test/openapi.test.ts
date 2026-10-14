@@ -53,13 +53,18 @@ describe("GET /openapi.json", () => {
     }
   });
 
-  test("is compact like every other endpoint, and pretty-printed with ?preview", async () => {
+  test("is compact by default, and pretty-printed only when ?preview asks for it", async () => {
     const body = async (query: string) =>
       (
         await handleRequest(new Request(`${ORIGIN}/openapi.json${query}`, { headers: CLIENT }))
       ).text();
-    expect(await body("")).toBe(`${JSON.stringify(spec)}\n`);
-    expect(await body("?preview")).toBe(`${JSON.stringify(spec, null, 2)}\n`);
+    const compact = `${JSON.stringify(spec)}\n`;
+    const pretty = `${JSON.stringify(spec, null, 2)}\n`;
+    expect(await body("")).toBe(compact);
+    expect(await body("?preview=false")).toBe(compact);
+    expect(await body("?preview=0")).toBe(compact);
+    expect(await body("?preview")).toBe(pretty);
+    expect(await body("?preview=true")).toBe(pretty);
   });
 
   test("points at the deployment it was fetched from and carries the package version", () => {

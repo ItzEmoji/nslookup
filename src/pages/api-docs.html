@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>API reference · nslookup</title>
+<title>API · nslookup</title>
 <meta name="color-scheme" content="light dark">
 <script>
   try {
@@ -19,33 +19,43 @@
 <style>
 .side-item .badge-method{height:18px;padding:0 5px;font-size:11px}
 .side-item .side-text.mono{font-size:12.5px}
+.side-group+div .side-group:first-child{margin-top:20px}
+.topsearch input{border-radius:19px}
+.page-desc code,.ep .card-desc code,.param-desc code,.resp-desc code{color:var(--text);background:var(--surface-3);padding:1px 5px;border-radius:4px}
+.page-desc p+p{margin-top:8px}
+.spec-link{display:flex;align-items:center;gap:8px}
 .ep{scroll-margin-top:calc(var(--topbar-h) + 16px)}
 .ep-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.ep-title code{font-size:16px;font-weight:600;overflow-wrap:anywhere}
-.ep .card-desc code,.page-desc code{color:var(--text);background:var(--surface-3);padding:1px 5px;border-radius:2px}
-.params{border-top:1px solid var(--border)}
-.param{display:grid;grid-template-columns:220px minmax(0,1fr);gap:8px 24px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
-.param-name{display:flex;flex-direction:column;gap:2px}
-.param-name label,.param-name strong{font-size:13.5px;font-weight:600}
-.param-name code{color:var(--text-3);font-size:12px}
-.param .input{max-width:420px}
-.types{display:flex;flex-wrap:wrap;gap:6px}
-.type-chip{position:relative}
-.type-chip input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0}
-.type-chip span{display:inline-flex;align-items:center;height:28px;min-width:52px;justify-content:center;padding:0 9px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);color:var(--text-2);font:500 12px/1 var(--font-mono);cursor:pointer;transition:background-color 120ms,border-color 120ms,color 120ms}
-.type-chip input:hover+span{border-color:var(--text-3)}
-.type-chip input:checked+span{border-color:var(--ink);background:var(--ink-tint);color:var(--link)}
-.type-chip input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
-.request{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;background:var(--surface-2)}
+.ep-title code{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.ep-title .ep-summary{color:var(--text-2);font-size:13.5px;font-weight:500}
+.ep-group{margin-top:32px;color:var(--text-3);font-size:12px;font-weight:600}
+.ep-group+.ep{margin-top:10px}
+.param{display:grid;grid-template-columns:220px minmax(0,1fr);gap:8px 24px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.param-name{display:flex;flex-direction:column;gap:2px;min-width:0}
+.param-name label,.param-name strong{font-size:13px;font-weight:600;font-family:var(--font-mono)}
+.param-name span{color:var(--text-3);font-size:12px}
+.param-desc{grid-column:2;color:var(--text-2);font-size:12.5px}
+.param .input{max-width:440px}
+.request{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface-2)}
 .request .code{flex:1;min-width:0;background:var(--surface)}
-.request .btn{height:44px}
-.response{border-top:1px solid var(--border)}
-.response-head{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);color:var(--text-2);font-size:13px}
-.response-head .spacer{flex:1}
-.response pre{max-height:420px;overflow:auto;padding:14px 0;font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.responses{border-top:1px solid var(--border)}
+.responses summary{display:flex;align-items:center;gap:6px;padding:10px 16px;color:var(--link);font-size:13px;font-weight:500;cursor:pointer;list-style:none}
+.responses summary::-webkit-details-marker{display:none}
+.responses summary .icon{width:14px;height:14px;transition:transform 140ms var(--ease-out)}
+.responses[open] summary .icon{transform:rotate(90deg)}
+.resp{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 12px;padding:10px 16px;border-top:1px solid var(--border)}
+.resp-desc{font-size:13px}
+.resp-type{color:var(--text-3);font-size:12px}
+.resp pre{grid-column:2;margin-top:4px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.result{border-top:1px solid var(--border)}
+.result-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text-2);font-size:13px}
+.result pre{max-height:420px;overflow:auto;padding:12px 16px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.result:not(.hidden){animation:fade 200ms ease-out}
+.load-note{padding:24px 0;color:var(--text-2)}
 .spinner{width:12px;height:12px;border:2px solid var(--border-strong);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:900px){.brand span{display:none}.topsearch{flex:1}.param{grid-template-columns:minmax(0,1fr);padding:12px 0}.request{flex-direction:column;align-items:stretch;padding:14px 16px}.request .btn{height:36px}}
+@keyframes fade{from{opacity:0}}
+@media(max-width:900px){.brand span{display:none}.topsearch{flex:1}.param{grid-template-columns:minmax(0,1fr)}.param-desc{grid-column:1}.request{flex-direction:column;align-items:stretch}}
 </style>
 </head>
 <body>
@@ -55,9 +65,7 @@
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
-  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
-  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9.5l3 2.5-3 2.5M12.5 15H17"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4M8.5 12h7M8.5 16h7"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></symbol>
@@ -75,10 +83,6 @@
     <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
     <input name="domain" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Look up a domain or IP address" placeholder="Domain or IP address">
   </form>
-  <nav class="topbar-links" aria-label="Documentation">
-    <a href="/help">CLI</a>
-    <a href="/api-docs" aria-current="page">API</a>
-  </nav>
   <div class="topbar-actions">
     <button class="icon-btn theme-btn" onclick="toggleTheme()" title="Switch light / dark" aria-label="Switch between light and dark theme">
       <svg class="icon i-moon" aria-hidden="true"><use href="#i-moon"/></svg>
@@ -90,25 +94,11 @@
 <div class="shell">
   <nav class="sidebar" id="sidebar" aria-label="Endpoints">
     <div class="side-group">
-      <a class="side-item" href="/"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="side-text">Overview</span></a>
+      <a class="side-item" href="/"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg><span class="side-text">Back to lookup</span></a>
     </div>
-    <div class="side-group">
-      <div class="side-label">Endpoints</div>
-      <a class="side-item" href="#lookup"><span class="badge badge-method">GET</span><span class="side-text mono">/{domain}</span></a>
-      <a class="side-item" href="#ip"><span class="badge badge-method">GET</span><span class="side-text mono">/ip/{domain}</span></a>
-      <a class="side-item" href="#ipv4"><span class="badge badge-method">GET</span><span class="side-text mono">/ipv4/{domain}</span></a>
-      <a class="side-item" href="#ipv6"><span class="badge badge-method">GET</span><span class="side-text mono">/ipv6/{domain}</span></a>
-      <a class="side-item" href="#whois"><span class="badge badge-method">GET</span><span class="side-text mono">/whois/{domain}</span></a>
-      <a class="side-item" href="#abuse"><span class="badge badge-method">GET</span><span class="side-text mono">/abuse/{domain}</span></a>
-      <a class="side-item" href="#propagated"><span class="badge badge-method">GET</span><span class="side-text mono">/propagated/{domain}</span></a>
-      <a class="side-item" href="#ssl"><span class="badge badge-method">GET</span><span class="side-text mono">/ssl/{domain}</span></a>
-      <a class="side-item" href="#security"><span class="badge badge-method">GET</span><span class="side-text mono">/security/{domain}</span></a>
-      <a class="side-item" href="#myip"><span class="badge badge-method">GET</span><span class="side-text mono">/</span></a>
-    </div>
+    <div id="sideOps"></div>
     <div class="side-foot">
-      <a class="side-item" href="/help"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg><span class="side-text">CLI reference</span></a>
-      <a class="side-item" href="/api-docs" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span class="side-text">API reference</span></a>
-      <a class="side-item" href="/openapi.json?preview"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="side-text">openapi.json</span></a>
+      <a class="side-item" href="/openapi.json"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span class="side-text mono">openapi.json</span></a>
     </div>
   </nav>
   <div class="scrim" id="scrim" onclick="toggleSidebar(false)"></div>
@@ -117,229 +107,139 @@
     <div class="page page-narrow">
       <div class="page-head">
         <div>
-          <div class="crumbs"><a href="/">Overview</a><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg><span>API reference</span></div>
-          <h1>API reference</h1>
-          <p class="page-desc">Set the parameters, copy the <code>curl</code> command or send the request from here. Requests go to this deployment. Every endpoint also takes <code>?resolvers=</code> and <code>?preview</code>.</p>
+          <h1 id="apiTitle">API</h1>
+          <div class="page-desc" id="apiDesc"></div>
         </div>
-        <a class="btn" href="/openapi.json?preview"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>openapi.json</a>
+        <a class="btn spec-link" href="/openapi.json"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>openapi.json</a>
       </div>
-
-      <!-- /{domain} -->
-      <section class="card ep" id="lookup" aria-labelledby="lookup-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="lookup-title"><span class="badge badge-method">GET</span><code>/{domain}</code></div>
-          <p class="card-desc">Every DNS record from every resolver with a per-type consensus, plus propagation, Spamhaus and WHOIS status.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="lookup-domain">Domain</label><code>path</code></div><input class="input mono" id="lookup-domain" value="example.com" oninput="updateAll()"></div>
-          <div class="param"><div class="param-name"><strong id="lookup-types-label">Record types</strong><code>type</code></div>
-            <div class="types" id="lookup-types" role="group" aria-labelledby="lookup-types-label" onchange="updateAll()">
-              <label class="type-chip"><input type="checkbox" value="A"><span>A</span></label>
-              <label class="type-chip"><input type="checkbox" value="AAAA"><span>AAAA</span></label>
-              <label class="type-chip"><input type="checkbox" value="CAA"><span>CAA</span></label>
-              <label class="type-chip"><input type="checkbox" value="CERT"><span>CERT</span></label>
-              <label class="type-chip"><input type="checkbox" value="CNAME"><span>CNAME</span></label>
-              <label class="type-chip"><input type="checkbox" value="DNSKEY"><span>DNSKEY</span></label>
-              <label class="type-chip"><input type="checkbox" value="DS"><span>DS</span></label>
-              <label class="type-chip"><input type="checkbox" value="HTTPS"><span>HTTPS</span></label>
-              <label class="type-chip"><input type="checkbox" value="LOC"><span>LOC</span></label>
-              <label class="type-chip"><input type="checkbox" value="MX"><span>MX</span></label>
-              <label class="type-chip"><input type="checkbox" value="NAPTR"><span>NAPTR</span></label>
-              <label class="type-chip"><input type="checkbox" value="NS"><span>NS</span></label>
-              <label class="type-chip"><input type="checkbox" value="PTR"><span>PTR</span></label>
-              <label class="type-chip"><input type="checkbox" value="SMIMEA"><span>SMIMEA</span></label>
-              <label class="type-chip"><input type="checkbox" value="SOA"><span>SOA</span></label>
-              <label class="type-chip"><input type="checkbox" value="SRV"><span>SRV</span></label>
-              <label class="type-chip"><input type="checkbox" value="SSHFP"><span>SSHFP</span></label>
-              <label class="type-chip"><input type="checkbox" value="SVCB"><span>SVCB</span></label>
-              <label class="type-chip"><input type="checkbox" value="TLSA"><span>TLSA</span></label>
-              <label class="type-chip"><input type="checkbox" value="TXT"><span>TXT</span></label>
-              <label class="type-chip"><input type="checkbox" value="URI"><span>URI</span></label>
-              <label class="type-chip"><input type="checkbox" value="ALL"><span>ALL</span></label>
-            </div>
-          </div>
-          <div class="param"><div class="param-name"><label for="lookup-whois">Include WHOIS</label><code>whois</code></div><label class="toggle-switch"><input type="checkbox" id="lookup-whois" checked onchange="updateAll()"><span class="toggle-slider"></span></label></div>
-          <div class="param"><div class="param-name"><label for="lookup-resolvers">Custom resolvers</label><code>resolvers</code></div><input class="input mono" placeholder="https://cloudflare-dns.com/dns-query" id="lookup-resolvers" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-lookup"></code><button class="copy-btn" onclick="copyCurl('lookup', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('lookup')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-lookup"></div>
-      </section>
-
-      <!-- /ip/{domain} -->
-      <section class="card ep" id="ip" aria-labelledby="ip-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="ip-title"><span class="badge badge-method">GET</span><code>/ip/{domain}</code></div>
-          <p class="card-desc">IPv4 and IPv6 addresses as JSON.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="ip-domain">Domain</label><code>path</code></div><input class="input mono" id="ip-domain" value="example.com" oninput="updateAll()"></div>
-          <div class="param"><div class="param-name"><label for="ip-ipv4">Include IPv4</label><code>ipv4</code></div><label class="toggle-switch"><input type="checkbox" id="ip-ipv4" checked onchange="updateAll()"><span class="toggle-slider"></span></label></div>
-          <div class="param"><div class="param-name"><label for="ip-ipv6">Include IPv6</label><code>ipv6</code></div><label class="toggle-switch"><input type="checkbox" id="ip-ipv6" checked onchange="updateAll()"><span class="toggle-slider"></span></label></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-ip"></code><button class="copy-btn" onclick="copyCurl('ip', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('ip')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-ip"></div>
-      </section>
-
-      <!-- /ipv4/{domain} -->
-      <section class="card ep" id="ipv4" aria-labelledby="ipv4-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="ipv4-title"><span class="badge badge-method">GET</span><code>/ipv4/{domain}</code></div>
-          <p class="card-desc">The first IPv4 address, as plain text.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="ipv4-domain">Domain</label><code>path</code></div><input class="input mono" id="ipv4-domain" value="example.com" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-ipv4"></code><button class="copy-btn" onclick="copyCurl('ipv4', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('ipv4', 'text/plain')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-ipv4"></div>
-      </section>
-
-      <!-- /ipv6/{domain} -->
-      <section class="card ep" id="ipv6" aria-labelledby="ipv6-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="ipv6-title"><span class="badge badge-method">GET</span><code>/ipv6/{domain}</code></div>
-          <p class="card-desc">The first IPv6 address, as plain text.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="ipv6-domain">Domain</label><code>path</code></div><input class="input mono" id="ipv6-domain" value="example.com" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-ipv6"></code><button class="copy-btn" onclick="copyCurl('ipv6', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('ipv6', 'text/plain')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-ipv6"></div>
-      </section>
-
-      <!-- /whois/{domain} -->
-      <section class="card ep" id="whois" aria-labelledby="whois-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="whois-title"><span class="badge badge-method">GET</span><code>/whois/{domain}</code></div>
-          <p class="card-desc">Raw RDAP data as JSON.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="whois-domain">Domain</label><code>path</code></div><input class="input mono" id="whois-domain" value="example.com" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-whois"></code><button class="copy-btn" onclick="copyCurl('whois', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('whois')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-whois"></div>
-      </section>
-
-      <!-- /abuse/{domain} -->
-      <section class="card ep" id="abuse" aria-labelledby="abuse-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="abuse-title"><span class="badge badge-method">GET</span><code>/abuse/{domain-or-ip}</code></div>
-          <p class="card-desc"><code>true</code> if the domain or IP is listed on Spamhaus, otherwise <code>false</code>.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="abuse-domain">Domain or IP</label><code>path</code></div><input class="input mono" id="abuse-domain" value="example.com" oninput="updateAll()"></div>
-          <div class="param"><div class="param-name"><label for="abuse-resolver">Custom resolver</label><code>resolver</code></div><input class="input mono" placeholder="1.1.1.1" id="abuse-resolver" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-abuse"></code><button class="copy-btn" onclick="copyCurl('abuse', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('abuse')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-abuse"></div>
-      </section>
-
-      <!-- /propagated/{domain} -->
-      <section class="card ep" id="propagated" aria-labelledby="propagated-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="propagated-title"><span class="badge badge-method">GET</span><code>/propagated/{domain}</code></div>
-          <p class="card-desc"><code>true</code> if every resolver returns the same records, otherwise <code>false</code>.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="propagated-domain">Domain</label><code>path</code></div><input class="input mono" id="propagated-domain" value="example.com" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-propagated"></code><button class="copy-btn" onclick="copyCurl('propagated', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('propagated')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-propagated"></div>
-      </section>
-
-      <!-- /ssl/{domain} -->
-      <section class="card ep" id="ssl" aria-labelledby="ssl-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="ssl-title"><span class="badge badge-method">GET</span><code>/ssl/{domain}</code></div>
-          <p class="card-desc">Certificate history from Certificate Transparency logs.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="ssl-domain">Domain</label><code>path</code></div><input class="input mono" id="ssl-domain" value="example.com" oninput="updateAll()"></div>
-          <div class="param"><div class="param-name"><label for="ssl-provider">Provider</label><code>provider</code></div>
-            <select class="input" id="ssl-provider" onchange="updateAll()"><option value="certspotter">CertSpotter</option><option value="crt.sh">crt.sh</option></select>
-          </div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-ssl"></code><button class="copy-btn" onclick="copyCurl('ssl', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('ssl')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-ssl"></div>
-      </section>
-
-      <!-- /security/{domain} -->
-      <section class="card ep" id="security" aria-labelledby="security-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="security-title"><span class="badge badge-method">GET</span><code>/security/{domain}</code></div>
-          <p class="card-desc">SPF, DMARC (from <code>_dmarc.</code>) and CAA records. DKIM keys are looked up for the selectors you give.</p>
-        </div></div>
-        <div class="params">
-          <div class="param"><div class="param-name"><label for="security-domain">Domain</label><code>path</code></div><input class="input mono" id="security-domain" value="example.com" oninput="updateAll()"></div>
-          <div class="param"><div class="param-name"><label for="security-dkim">DKIM selectors</label><code>dkim</code></div><input class="input mono" placeholder="google,selector1" id="security-dkim" oninput="updateAll()"></div>
-        </div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-security"></code><button class="copy-btn" onclick="copyCurl('security', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('security')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-security"></div>
-      </section>
-
-      <!-- / -->
-      <section class="card ep" id="myip" aria-labelledby="myip-title">
-        <div class="card-head"><div>
-          <div class="ep-title" id="myip-title"><span class="badge badge-method">GET</span><code>/</code></div>
-          <p class="card-desc">The IP address you are calling from, as plain text.</p>
-        </div></div>
-        <div class="request"><div class="code"><span class="prompt">$</span><code id="curl-myip"></code><button class="copy-btn" onclick="copyCurl('myip', this)" aria-label="Copy command"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button></div><button class="btn btn-primary" onclick="sendReq('myip', 'text/plain')"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Send request</button></div>
-        <div class="response hidden" id="res-myip"></div>
-      </section>
+      <div id="ops"><p class="load-note">Loading <code>/openapi.json</code>…</p></div>
     </div>
   </main>
 </div>
 
 <script>
+// The page is drawn from /openapi.json, so it can't drift from the API.
 const BASE_URL = '{{ORIGIN}}';
-const IDS = ["lookup", "ip", "ipv4", "ipv6", "whois", "abuse", "propagated", "ssl", "security", "myip"];
+let spec = null;
 
-function getUrl(id) {
-  if (id === "myip") return BASE_URL + "/";
-
-  let domain = document.getElementById(id + "-domain").value.trim();
-  if (!domain) domain = "{domain}";
-
-  let path = "/" + domain;
-  if (id !== "lookup") path = "/" + id + "/" + domain;
-
-  const url = new URL(BASE_URL + path);
-
-  if (id === "lookup") {
-    const types = Array.from(document.querySelectorAll("#lookup-types input:checked")).map((el) => el.value);
-    if (types.length > 0) url.searchParams.set("type", types.join(","));
-    if (!document.getElementById("lookup-whois").checked) url.searchParams.set("whois", "false");
-    const resolvers = document.getElementById("lookup-resolvers").value.trim();
-    if (resolvers) url.searchParams.set("resolvers", resolvers);
-  } else if (id === "ip") {
-    if (!document.getElementById("ip-ipv4").checked) url.searchParams.set("ipv4", "false");
-    if (!document.getElementById("ip-ipv6").checked) url.searchParams.set("ipv6", "false");
-  } else if (id === "abuse") {
-    const res = document.getElementById("abuse-resolver").value.trim();
-    if (res) url.searchParams.set("resolver", res);
-  } else if (id === "ssl") {
-    const provider = document.getElementById("ssl-provider").value;
-    if (provider !== "certspotter") url.searchParams.set("provider", provider);
-  } else if (id === "security") {
-    const selectors = document.getElementById("security-dkim").value.trim();
-    if (selectors) url.searchParams.set("dkim", selectors);
-  }
-
-  // Decoded so the curl command reads cleanly.
-  return decodeURIComponent(url.toString());
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+// Spec descriptions use `code` spans; everything else is plain text.
+function prose(s) {
+  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+function icon(name) {
+  return '<svg class="icon" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+}
+function deref(obj) {
+  if (!obj || !obj.$ref) return obj;
+  return obj.$ref
+    .replace(/^#\//, "")
+    .split("/")
+    .reduce((o, k) => (o ? o[k] : undefined), spec);
 }
 
-function updateAll() {
-  for (const id of IDS) {
-    document.getElementById("curl-" + id).textContent = 'curl "' + getUrl(id) + '"';
+function opsInOrder() {
+  const out = [];
+  for (const [path, item] of Object.entries(spec.paths)) {
+    for (const [method, op] of Object.entries(item)) {
+      out.push({ path, method: method.toUpperCase(), op, params: (op.parameters || []).map(deref) });
+    }
   }
+  return out;
 }
 
-const CHECK = '<svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>';
+// One form control per parameter, chosen from its schema.
+function control(op, p) {
+  const id = op.operationId + "-" + p.name;
+  const s = p.schema || {};
+  const attrs = ' id="' + id + '" data-op="' + op.operationId + '" data-param="' + esc(p.name) + '" data-in="' + p.in + '"';
+  if (p.name === "preview" || s.type === "boolean") {
+    const on = p.name === "preview" ? false : s.default !== false;
+    return '<label class="toggle-switch"><input type="checkbox"' + attrs + (on ? " checked" : "") + ' data-default="' + on + '"><span class="toggle-slider"></span></label>';
+  }
+  if (s.enum) {
+    return '<select class="input"' + attrs + ">" + s.enum.map((v) => '<option value="' + esc(v) + '"' + (v === s.default ? " selected" : "") + ">" + esc(v) + "</option>").join("") + "</select>";
+  }
+  const value = p.in === "path" ? p.example || "" : "";
+  const hint = p.in === "path" ? "" : p.example || "";
+  return '<input class="input mono"' + attrs + ' value="' + esc(value) + '" placeholder="' + esc(hint) + '" autocomplete="off" spellcheck="false">';
+}
+
+function renderOp({ path, method, op, params }) {
+  const id = op.operationId;
+  const ok = op.responses?.["200"]?.content || {};
+  const accept = Object.keys(ok)[0] || "application/json";
+  const rows = params
+    .map(
+      (p) =>
+        '<div class="param"><div class="param-name"><label for="' + id + "-" + esc(p.name) + '">' + esc(p.name) + "</label><span>" + esc(p.in) + (p.required ? " · required" : "") + "</span></div>" +
+        control(op, p) +
+        (p.description ? '<div class="param-desc">' + prose(p.description) + "</div>" : "") +
+        "</div>",
+    )
+    .join("");
+  const responses = Object.entries(op.responses || {})
+    .map(([code, r]) => {
+      const types = Object.entries(r.content || {});
+      const example = types.find(([, c]) => c.example !== undefined);
+      const shown = example ? (typeof example[1].example === "string" ? example[1].example : JSON.stringify(example[1].example, null, 2)) : "";
+      return (
+        '<div class="resp"><span class="badge ' + (code < 300 ? "badge-ok" : code < 500 ? "badge-warn" : "badge-fail") + '">' + esc(code) + '</span><div><div class="resp-desc">' + prose(r.description) + '</div><div class="resp-type mono">' + types.map(([t]) => esc(t)).join(", ") + "</div></div>" +
+        (shown ? "<pre>" + esc(shown) + "</pre>" : "") +
+        "</div>"
+      );
+    })
+    .join("");
+  return (
+    '<section class="card ep" id="' + id + '" aria-labelledby="' + id + '-title" data-path="' + esc(path) + '" data-accept="' + esc(accept) + '">' +
+    '<div class="card-head"><div><div class="ep-title" id="' + id + '-title"><span class="badge badge-method">' + method + "</span><code>" + esc(path) + '</code><span class="ep-summary">' + esc(op.summary || "") + "</span></div>" +
+    (op.description ? '<p class="card-desc">' + prose(op.description) + "</p>" : "") +
+    "</div></div>" +
+    rows +
+    '<div class="request"><div class="code"><span class="prompt">$</span><code id="curl-' + id + '"></code><button class="copy-btn" data-copy="' + id + '" aria-label="Copy command">' + icon("copy") + "</button></div>" +
+    '<button class="btn btn-primary" data-send="' + id + '">' + icon("play") + "Send request</button></div>" +
+    '<div class="result hidden" id="res-' + id + '" aria-live="polite"></div>' +
+    (responses ? '<details class="responses"><summary>' + icon("chevron") + "Responses</summary>" + responses + "</details>" : "") +
+    "</section>"
+  );
+}
+
+function urlFor(id) {
+  const card = document.getElementById(id);
+  let path = card.dataset.path;
+  const query = [];
+  for (const el of card.querySelectorAll("[data-param]")) {
+    const name = el.dataset.param;
+    if (el.dataset.in === "path") {
+      path = path.replace("{" + name + "}", el.value.trim() || "{" + name + "}");
+    } else if (el.type === "checkbox") {
+      if (name === "preview") {
+        if (el.checked) query.push("preview");
+      } else if (String(el.checked) !== el.dataset.default) query.push(name + "=" + el.checked);
+    } else if (el.tagName === "SELECT") {
+      if (el.selectedIndex !== [...el.options].findIndex((o) => o.defaultSelected)) query.push(name + "=" + el.value);
+    } else if (el.value.trim()) {
+      query.push(name + "=" + el.value.trim());
+    }
+  }
+  return BASE_URL + path + (query.length ? "?" + query.join("&") : "");
+}
+
+function updateCurl(id) {
+  document.getElementById("curl-" + id).textContent = 'curl "' + urlFor(id) + '"';
+}
+
 async function copyCurl(id, btn) {
   try {
     await navigator.clipboard.writeText(document.getElementById("curl-" + id).textContent);
     if (!btn.dataset.idle) btn.dataset.idle = btn.innerHTML;
-    btn.innerHTML = CHECK;
+    btn.innerHTML = icon("check");
     btn.classList.add("copied");
     clearTimeout(btn._t);
     btn._t = setTimeout(() => {
@@ -349,50 +249,84 @@ async function copyCurl(id, btn) {
   } catch (e) {}
 }
 
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function showResponse(el, head, body) {
-  el.innerHTML = '<div class="response-head">' + head + "</div><pre>" + esc(body) + "</pre>";
+function showResult(el, head, body) {
+  el.innerHTML = '<div class="result-head">' + head + "</div>" + (body === undefined ? "" : "<pre>" + esc(body) + "</pre>");
   el.classList.remove("hidden");
 }
 
-function sendReq(id, acceptType = "application/json") {
-  const resEl = document.getElementById("res-" + id);
-  const url = getUrl(id);
-  if (url.includes("{domain}")) {
-    showResponse(resEl, '<span class="badge badge-warn">Missing domain</span>', "Enter a domain first.");
+async function send(id) {
+  const card = document.getElementById(id);
+  const out = document.getElementById("res-" + id);
+  const url = urlFor(id);
+  if (/\{[a-z]+\}/.test(url)) {
+    showResult(out, '<span class="badge badge-warn">Missing value</span>', "Fill in the path parameters first.");
     return;
   }
-  resEl.innerHTML = '<div class="response-head"><span class="spinner" aria-hidden="true"></span>Sending…</div>';
-  resEl.classList.remove("hidden");
-
+  showResult(out, '<span class="spinner" aria-hidden="true"></span>Sending…');
   const started = performance.now();
-  let status = 0;
-  let statusText = "";
-  fetch(url, { headers: { accept: acceptType } })
-    .then((r) => {
-      status = r.status;
-      statusText = r.statusText;
-      return r.text();
-    })
-    .then((text) => {
-      let body = text;
-      try {
-        body = JSON.stringify(JSON.parse(text), null, 2);
-      } catch (e) {}
-      const ms = Math.round(performance.now() - started);
-      const kind = status < 300 ? "badge-method" : status < 500 ? "badge-warn" : "badge-fail";
-      showResponse(
-        resEl,
-        '<span class="badge ' + kind + '">' + status + (statusText ? " " + esc(statusText) : "") + "</span>" +
-          '<span class="mono">' + ms + " ms</span>",
-        body,
-      );
-    })
-    .catch((e) => showResponse(resEl, '<span class="badge badge-fail">Failed</span>', e.message));
+  try {
+    const res = await fetch(url, { headers: { accept: card.dataset.accept } });
+    let body = await res.text();
+    try {
+      body = JSON.stringify(JSON.parse(body), null, 2);
+    } catch (e) {}
+    const kind = res.status < 300 ? "badge-ok" : res.status < 500 ? "badge-warn" : "badge-fail";
+    showResult(
+      out,
+      '<span class="badge ' + kind + '">' + res.status + "</span><span class=\"mono\">" + Math.round(performance.now() - started) + " ms</span>",
+      body,
+    );
+  } catch (e) {
+    showResult(out, '<span class="badge badge-fail">Failed</span>', e.message);
+  }
 }
+
+function render() {
+  document.getElementById("apiTitle").textContent = (spec.info.title || "API") + " API";
+  document.getElementById("apiDesc").innerHTML = (spec.info.description || "")
+    .split(/\n\s*\n/)
+    .map((para) => "<p>" + prose(para.replace(/\n/g, " ")) + "</p>")
+    .join("");
+  const ops = opsInOrder();
+  const tags = (spec.tags || []).map((t) => t.name);
+  for (const o of ops) for (const t of o.op.tags || ["Other"]) if (!tags.includes(t)) tags.push(t);
+  const inTag = (t) => ops.filter((o) => (o.op.tags || ["Other"])[0] === t);
+  const tagDesc = (t) => (spec.tags || []).find((x) => x.name === t)?.description || "";
+  document.getElementById("ops").innerHTML = tags
+    .filter((t) => inTag(t).length)
+    .map((t) => '<h2 class="ep-group" title="' + esc(tagDesc(t)) + '">' + esc(t) + "</h2>" + inTag(t).map(renderOp).join(""))
+    .join("");
+  document.getElementById("sideOps").innerHTML = tags
+    .filter((t) => inTag(t).length)
+    .map(
+      (t) =>
+        '<div class="side-group"><div class="side-label">' + esc(t) + "</div>" +
+        inTag(t)
+          .map((o) => '<a class="side-item" href="#' + o.op.operationId + '"><span class="badge badge-method">' + o.method + '</span><span class="side-text mono">' + esc(o.path) + "</span></a>")
+          .join("") +
+        "</div>",
+    )
+    .join("");
+  for (const o of ops) updateCurl(o.op.operationId);
+  observeSections();
+  if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+}
+
+document.addEventListener("input", (e) => {
+  const op = e.target.dataset?.op;
+  if (op) updateCurl(op);
+});
+document.addEventListener("change", (e) => {
+  const op = e.target.dataset?.op;
+  if (op) updateCurl(op);
+});
+document.addEventListener("click", (e) => {
+  const copy = e.target.closest("[data-copy]");
+  if (copy) copyCurl(copy.dataset.copy, copy);
+  const sendBtn = e.target.closest("[data-send]");
+  if (sendBtn) send(sendBtn.dataset.send);
+  if (e.target.closest(".sidebar a")) toggleSidebar(false);
+});
 
 function toggleSidebar(force) {
   const s = document.getElementById("sidebar");
@@ -403,20 +337,19 @@ function toggleSidebar(force) {
 }
 function toggleTheme() {
   const root = document.documentElement;
-  const dark = root.dataset.theme
-    ? root.dataset.theme === "dark"
-    : matchMedia("(prefers-color-scheme: dark)").matches;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   const next = dark ? "light" : "dark";
-  root.dataset.theme = next;
+  const apply = () => {
+    root.dataset.theme = next;
+  };
+  if (document.startViewTransition) document.startViewTransition(apply);
+  else apply();
   try {
     const s = JSON.parse(localStorage.getItem("lookup_settings") || "{}");
     s.appearance = next;
     localStorage.setItem("lookup_settings", JSON.stringify(s));
   } catch (e) {}
 }
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".sidebar a")) toggleSidebar(false);
-});
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") toggleSidebar(false);
   if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -426,19 +359,30 @@ document.addEventListener("keydown", (e) => {
 });
 
 // Highlight the endpoint in view in the sidebar.
-const links = document.querySelectorAll('.sidebar a[href^="#"]');
-const observer = new IntersectionObserver(
-  (entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      for (const a of links) a.classList.toggle("active", a.getAttribute("href") === "#" + entry.target.id);
-    }
-  },
-  { rootMargin: "-20% 0px -70% 0px" },
-);
-document.querySelectorAll(".ep").forEach((card) => observer.observe(card));
+function observeSections() {
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        for (const a of links) a.classList.toggle("active", a.getAttribute("href") === "#" + entry.target.id);
+      }
+    },
+    { rootMargin: "-20% 0px -70% 0px" },
+  );
+  document.querySelectorAll(".ep").forEach((card) => observer.observe(card));
+}
 
-updateAll();
+fetch("/openapi.json", { headers: { accept: "application/json" } })
+  .then((r) => r.json())
+  .then((json) => {
+    spec = json;
+    render();
+  })
+  .catch((e) => {
+    document.getElementById("ops").innerHTML =
+      '<p class="load-note"><span class="badge badge-fail">Failed</span> Couldn\'t load <a href="/openapi.json">/openapi.json</a>: ' + esc(e.message) + "</p>";
+  });
 </script>
 </body>
 </html>

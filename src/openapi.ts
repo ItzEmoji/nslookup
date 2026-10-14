@@ -84,7 +84,7 @@ export function openApiDocument(origin: string) {
       license: { name: "See repository", url: "https://github.com/itzemoji/nslookup" },
     },
     externalDocs: {
-      description: "Interactive playground",
+      description: "API reference with a request runner",
       url: `${origin}/api-docs`,
     },
     servers: [{ url: origin }],
@@ -93,7 +93,7 @@ export function openApiDocument(origin: string) {
     tags: [
       { name: "DNS", description: "Record lookups across resolvers." },
       { name: "Domain", description: "Registration, reputation and security posture." },
-      { name: "Meta", description: "The caller, documentation and this description." },
+      { name: "Meta", description: "The caller's address and this description." },
     ],
     paths: {
       "/": {
@@ -363,23 +363,6 @@ export function openApiDocument(origin: string) {
           },
         },
       },
-      "/help": {
-        get: {
-          operationId: "getHelp",
-          tags: ["Meta"],
-          summary: "Reference",
-          description: "A man page for curl, wget and httpie; an HTML page for everything else.",
-          responses: {
-            "200": {
-              description: "The reference.",
-              content: {
-                "text/plain": { schema: { type: "string" } },
-                "text/html": { schema: { type: "string" } },
-              },
-            },
-          },
-        },
-      },
       "/openapi.json": {
         get: {
           operationId: "getOpenApi",
@@ -408,9 +391,10 @@ export function openApiDocument(origin: string) {
         preview: {
           name: "preview",
           in: "query",
-          description: "Present (any value) to pretty-print the JSON.",
+          description:
+            "`true` (or no value) pretty-prints the JSON. Leave it out, or pass `false`, for compact output.",
           allowEmptyValue: true,
-          schema: { type: "string" },
+          schema: { type: "boolean", default: false },
         },
       },
       schemas: {

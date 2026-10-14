@@ -5,7 +5,7 @@ import { appPage } from "./pages/index.ts";
 import { abuse } from "./routes/abuse.ts";
 import { addresses, firstAddress } from "./routes/addresses.ts";
 import { clientIp, lookup } from "./routes/lookup.ts";
-import { apiDocs, help } from "./routes/pages.ts";
+import { apiDocs } from "./routes/pages.ts";
 import { propagated } from "./routes/propagated.ts";
 import { security } from "./routes/security.ts";
 import { ssl } from "./routes/ssl.ts";
@@ -60,9 +60,10 @@ export async function handleRequest(request: Request): Promise<Response> {
   const ctx = createContext(request);
   const { pathname } = ctx.url;
 
-  if (pathname === "/help") return help(ctx);
+  // The old CLI reference; the API page replaced it.
+  if (pathname === "/help") return Response.redirect(`${ctx.url.origin}/api-docs`, 301);
   if (pathname === "/api-docs") return apiDocs(ctx);
-  // JSON for everyone, browsers included; compact like every endpoint, ?preview pretty-prints.
+  // JSON for everyone, browsers included; compact like every endpoint, ?preview=true pretty-prints.
   if (pathname === "/openapi.json")
     return json(openApiDocument(ctx.url.origin), { space: ctx.jsonSpace });
   if (!ctx.wantsApi) return serveApp(ctx);

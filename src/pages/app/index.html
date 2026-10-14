@@ -55,10 +55,6 @@
   </a>
   <span class="topbar-sep" aria-hidden="true"></span>
   <div class="search-slot-top" id="searchSlotTop"></div>
-  <nav class="topbar-links" aria-label="Documentation">
-    <a href="/help">CLI</a>
-    <a href="/api-docs">API</a>
-  </nav>
   <div class="topbar-actions">
     <button class="icon-btn theme-btn" onclick="toggleTheme()" title="Switch light / dark" aria-label="Switch between light and dark theme">
       <svg class="icon i-moon" aria-hidden="true"><use href="#i-moon"/></svg>
@@ -228,11 +224,6 @@
         <div class="set-control">
           <input type="number" class="settings-input mono narrow" id="setTimeout" onchange="updateSettingText('advanced','timeout',parseInt(this.value))" placeholder="5000" aria-label="Resolver timeout in milliseconds">
         </div>
-      </div>
-      <div class="card-foot">
-        <span>The API takes <code>?resolvers=&lt;url&gt;,&lt;url&gt;</code> on every endpoint.</span>
-        <span class="spacer"></span>
-        <a href="/api-docs">API reference<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </section>
 

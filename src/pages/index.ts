@@ -2,8 +2,6 @@ import apiDocsAsset from "./api-docs.html" with { type: "text" };
 import appScriptAsset from "./app/app.js" with { type: "text" };
 import appShellAsset from "./app/index.html" with { type: "text" };
 import appStylesAsset from "./app/styles.css" with { type: "text" };
-import helpAsset from "./help.html" with { type: "text" };
-import helpTextAsset from "./help.txt" with { type: "text" };
 import sharedStylesAsset from "./shared.css" with { type: "text" };
 
 // `with { type: "text" }` makes every import a string at runtime, but Bun's
@@ -31,9 +29,6 @@ export const appPage = inlined(
   `<script>${asText(appScriptAsset)}</script>`,
 );
 
-const helpShell = withShared(helpAsset);
 const apiDocsShell = withShared(apiDocsAsset);
 
-export const helpPage = (origin: string) => withOrigin(helpShell, origin);
-export const helpText = (origin: string) => withOrigin(asText(helpTextAsset), origin);
 export const apiDocsPage = (origin: string) => withOrigin(apiDocsShell, origin);
