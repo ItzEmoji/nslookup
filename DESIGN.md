@@ -1,6 +1,6 @@
 ---
 name: nslookup
-description: A DNS lookup tool laid out like the dashboard operators already know, where each lookup is a zone and each check a record row.
+description: A DNS lookup tool that starts as one search field and answers with a ruled register, one column per resolver, in the plain grammar of a hosting dashboard.
 colors:
   canvas: "#f7f7f8"
   surface: "#ffffff"
@@ -17,8 +17,10 @@ colors:
   action-blue-soft: "#e8f0fc"
   on-blue: "#ffffff"
   link: "#0051c3"
+  focus: "#0051c3"
   signal-orange: "#f38020"
-  signal-orange-soft: "#fef1e6"
+  band: "#1d1d1f"
+  on-band: "#ffffff"
   ok: "#157f3b"
   ok-soft: "#e5f4ea"
   warn: "#8a4b00"
@@ -28,57 +30,67 @@ colors:
   fail-soft: "#fdeceb"
   note: "#4d4d52"
   note-soft: "#eeeef0"
-  focus: "#0051c3"
   canvas-dark: "#121213"
   surface-dark: "#1c1c1e"
   surface-2-dark: "#202023"
   surface-3-dark: "#26262a"
+  hover-dark: "#26262a"
   border-dark: "#313136"
   border-strong-dark: "#46464c"
   text-dark: "#f2f2f3"
   text-2-dark: "#c2c2c7"
   text-3-dark: "#9a9aa1"
-  action-blue-dark: "#2f74e0"
-  action-blue-hover-dark: "#4a88ec"
+  action-blue-dark: "#79aaff"
+  action-blue-hover-dark: "#a3c4ff"
   action-blue-soft-dark: "#1a2a45"
+  on-blue-dark: "#0b1a33"
   link-dark: "#79aaff"
+  band-dark: "#f2f2f3"
+  on-band-dark: "#1d1d1f"
   ok-dark: "#5fcf86"
   ok-soft-dark: "#173322"
   warn-dark: "#f5c060"
   warn-soft-dark: "#3a2c10"
+  warn-line-dark: "#b8862b"
   fail-dark: "#ff8a80"
   fail-soft-dark: "#3d1a18"
+  note-dark: "#c2c2c7"
   note-soft-dark: "#2c2c31"
 typography:
+  home-logo:
+    fontFamily: "Noto Sans, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+    fontSize: "46px"
+    fontWeight: 650
+    lineHeight: 1
+    letterSpacing: "-0.035em"
+  zone-name:
+    fontFamily: "ui-monospace, SF Mono, Cascadia Mono, Cascadia Code, Menlo, Consolas, Liberation Mono, monospace"
+    fontSize: "30px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+    fontFamily: "Noto Sans, system-ui, sans-serif"
     fontSize: "26px"
     fontWeight: 650
     lineHeight: 1.2
     letterSpacing: "-0.02em"
-    fontFeature: "\"cv11\", \"ss01\""
   title:
-    fontFamily: "Inter, system-ui, sans-serif"
-    fontSize: "16px"
+    fontFamily: "Noto Sans, system-ui, sans-serif"
+    fontSize: "15px"
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Inter, system-ui, sans-serif"
-    fontSize: "14px"
-    fontWeight: 400
-    lineHeight: 1.5
-    fontFeature: "\"cv11\", \"ss01\""
-  body-table:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Noto Sans, system-ui, sans-serif"
     fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Noto Sans, system-ui, sans-serif"
     fontSize: "12px"
     fontWeight: 600
-    lineHeight: 1.5
+    lineHeight: 1.3
   value-mono:
     fontFamily: "ui-monospace, SF Mono, Cascadia Mono, Cascadia Code, Menlo, Consolas, Liberation Mono, monospace"
     fontSize: "13px"
@@ -89,6 +101,8 @@ rounded:
   xs: "4px"
   sm: "6px"
   md: "8px"
+  search: "19px"
+  search-lg: "26px"
   pill: "999px"
 spacing:
   xxs: "4px"
@@ -96,9 +110,28 @@ spacing:
   sm: "12px"
   md: "16px"
   lg: "20px"
-  xl: "24px"
-  xxl: "32px"
+  xl: "28px"
+  xxl: "40px"
 components:
+  search:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.search}"
+    padding: "0 6px 0 14px"
+    height: "38px"
+  search-lg:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.search-lg}"
+    padding: "0 10px 0 20px"
+    height: "52px"
+  suggest-item:
+    textColor: "{colors.text}"
+    rounded: "{rounded.search}"
+    padding: "0 4px 0 12px"
+    height: "38px"
+  suggest-item-active:
+    backgroundColor: "{colors.hover}"
   button:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
@@ -122,31 +155,35 @@ components:
     height: "32px"
   button-danger-hover:
     backgroundColor: "{colors.fail-soft}"
+  icon-button:
+    textColor: "{colors.text-2}"
+    rounded: "{rounded.sm}"
+    size: "30px"
   input:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     rounded: "{rounded.sm}"
     padding: "0 10px"
-    height: "36px"
-  topbar-search:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.sm}"
-    padding: "0 64px 0 34px"
-    height: "34px"
+    height: "32px"
   card:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.md}"
-    padding: "18px 20px 16px"
-  card-foot:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.text-2}"
-    padding: "11px 20px"
+    rounded: "{rounded.sm}"
+  card-head:
+    padding: "12px 16px"
+    height: "52px"
+  fact-cells:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.sm}"
+    padding: "10px 16px 11px"
+  sectionbar:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.sm}"
+    padding: "8px 8px 8px 16px"
   table-header:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.text-2}"
     typography: "{typography.label}"
-    padding: "9px 16px"
+    padding: "8px 12px"
   badge-ok:
     backgroundColor: "{colors.ok-soft}"
     textColor: "{colors.ok}"
@@ -171,183 +208,219 @@ components:
     rounded: "{rounded.xs}"
     padding: "0 8px"
     height: "22px"
-  side-item:
+  selectable-tag:
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.text-2}"
     rounded: "{rounded.sm}"
-    padding: "0 10px"
-    height: "34px"
-  side-item-active:
-    backgroundColor: "{colors.surface-3}"
-    textColor: "{colors.text}"
-  chip:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.text-2}"
-    rounded: "{rounded.pill}"
-    padding: "0 10px"
-    height: "26px"
-  chip-hover:
+    padding: "0 9px"
+    height: "28px"
+  selectable-tag-on:
     backgroundColor: "{colors.action-blue-soft}"
-    textColor: "{colors.link}"
+    textColor: "{colors.action-blue}"
   code-block:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.text}"
     typography: "{typography.value-mono}"
     rounded: "{rounded.sm}"
-    padding: "10px 10px 10px 14px"
-  answer-differs:
+    padding: "7px 8px 7px 12px"
+  toast:
+    backgroundColor: "{colors.band}"
+    textColor: "{colors.on-band}"
+    rounded: "{rounded.sm}"
+    padding: "9px 14px"
+  modal:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.md}"
+  row-differs:
     backgroundColor: "{colors.warn-soft}"
-  answer-match:
-    backgroundColor: "{colors.action-blue-soft}"
 ---
 
 # Design System: nslookup
 
 ## Overview
 
-**Creative North Star: "The Familiar Console"**
+**Creative North Star: "A Search Field That Answers Like a Console"**
 
-nslookup wears the shape of a hosting dashboard the operator already knows by muscle memory: a 56px top bar, a 240px left sidebar, white cards on a pale canvas, and ruled tables. A lookup reads as a zone; every DNS type, mail record and certificate is a row with a status. Nothing about the frame asks to be learned, so all the attention goes to the values. The direction contract pins this world to the Cloudflare dashboard's grammar, but the product carries none of Cloudflare's identity: its own mark is an orange rounded square holding a white magnifier.
+nslookup opens the way a search engine does: the product's mark, its name, and one rounded field in the middle of an empty page. There is no navigation to learn, no landing copy and no documentation links. Typing a domain or an IP and pressing Enter is the whole interface.
 
-The surface is dense and quiet. Type sits at 13 to 14px, borders are 1px hairlines, and color mostly means something: blue is something you can do, orange is where you are, and green, amber, red and grey are verdicts. Depth is flat; cards are separated by borders and canvas, never by shadow. The one signature move is in-place resolver comparison: opening a record row reveals each resolver's answers side by side, hovering a value lights up the same value in every resolver, and values that some resolvers did not return carry an amber fill and a "not from X" note.
+The answer is a dashboard page in the plain grammar operators know from hosting control panels: a white 56px top bar, white cards on a pale grey canvas, 1px hairlines and ruled tables. The visual language is Cloudflare-like (Noto Sans, action blue, an orange mark) but carries none of Cloudflare's identity; the mark is the product's own orange rounded square holding a white magnifier.
+
+The signature move is the **register**: every record a lookup found, one row per value, with a column per resolver. A tick and the TTL mean that resolver returned the value; an amber cell with a dash means it did not. Disagreement is visible at a glance and can be isolated with one checkbox.
 
 **Key Characteristics:**
-- Dashboard shell: sticky 56px top bar, 240px sidebar that becomes a drawer under 900px.
-- White 8px-radius cards with 1px borders on a #f7f7f8 canvas; flat, no decorative shadows.
-- Inter for interface text, system monospace for every value (domains, records, IPs, TTLs, timings).
-- Blue for actions and links only; orange for the brand mark and the active-nav bar only.
-- Four status badges (ok, warn, fail, note), each a soft fill with a strong text color and an icon.
-- Full light and dark token sets, following the OS by default with a `data-theme` override.
+- Search-first: one field, centred on the start page, that glides into the top bar once a lookup runs.
+- Results as a ruled register with one column per resolver; never stacks of large status cards.
+- Noto Sans for the interface, system monospace for every value that could be pasted into a shell.
+- Blue only for actions, links and focus; orange only for the mark.
+- Four verdict badges (ok, warn, fail, note), each a soft fill, a strong text colour and an icon.
+- Flat surfaces separated by hairlines; shadows only on things that float or lift.
+- Full light and dark token sets that follow the OS, with a `data-theme` override.
+- Motion that explains a change (the field moving, results arriving) and can be turned off.
 
 ## Colors
 
-A neutral grey ramp carries nearly everything; two brand hues each own exactly one job, and four status hues carry verdicts.
+A neutral grey ramp carries nearly everything. Two brand hues each own exactly one job, and four status hues carry verdicts.
 
 ### Primary
-- **Action Blue** (`action-blue`): primary buttons, links, link-buttons ("Details", "Show N more", "Raw response"), focus rings, the input focus border, checked toggles and selected record-type tags. Its soft tint (`action-blue-soft`) is the input focus halo, chip hover, selection color and the hover-link highlight in the resolver comparison. In dark mode the button fill lifts to `action-blue-dark` and links to the lighter `link-dark` for contrast.
+- **Action Blue** (`action-blue`, `--ink`): primary buttons ("Run again", "Save"), links, link-buttons, IP links in the register, focus rings, checked toggles and checkboxes, pressed record-type tags, the spinner arc. Its soft tint (`action-blue-soft`, `--ink-tint`) is the input focus halo, text selection and the pressed-tag fill.
+- In dark mode the blue lifts to `#79aaff` and primary buttons put dark navy text (`on-blue-dark`) on it, so the button stays legible without a saturated block of colour.
 
 ### Secondary
-- **Signal Orange** (`signal-orange`): the brand mark's square and the 3px bar at the left edge of the active sidebar item. Nothing else.
+- **Signal Orange** (`signal-orange`): the brand mark's square, in the top bar and on the start page. Nothing else. It keeps its value in both themes.
 
 ### Status
-- **Verdict Green** (`ok` on `ok-soft`): passing checks, the "Agree" dot, sidebar section checkmarks, copied state.
-- **Review Amber** (`warn` on `warn-soft`): "Split", "Issue" and review badges, slow resolver timings, the "not from X" notes, and the disagreeing-value fill. `warn-line` is the amber rule color.
-- **Failure Red** (`fail` on `fail-soft`): failed checks, resolver errors, the danger button, the danger card border.
-- **Note Grey** (`note` on `note-soft`): informational badges such as "Needs a selector".
+- **Verdict Green** (`ok` on `ok-soft`): "No issues", passing checks, the per-resolver tick, the copied state.
+- **Review Amber** (`warn` on `warn-soft`): split answers, missing values, slow resolver timings, warning counts in the section bar. `warn-line` outlines the cell where a resolver is missing a value.
+- **Failure Red** (`fail` on `fail-soft`): failed checks, resolver errors, the danger button, the delete hover in the suggestion list, error toasts.
+- **Note Grey** (`note` on `note-soft`): informational badges and "Querying".
 
 ### Neutral
-- **Canvas Grey** (`canvas`): page background behind cards and the shell.
-- **Card White** (`surface`): cards, top bar, sidebar, inputs, modals.
-- **Inset Grey** (`surface-2`): table headers, card footers, code blocks, expanded rows, row hover.
-- **Pressed Grey** (`surface-3`): active sidebar item, segmented-control track.
-- **Hairline** (`border`) and **Firm Hairline** (`border-strong`): card and table rules; input, button and tag outlines.
-- **Ink / Secondary Ink / Muted Ink** (`text`, `text-2`, `text-3`): body text; descriptions and inactive nav; meta, placeholders and icons.
+- **Canvas Grey** (`canvas`): the page behind everything.
+- **Card White** (`surface`): cards, the top bar, the search field and its suggestion list, the section bar, modals.
+- **Inset Grey** (`surface-2`): table headers, row hover, code blocks, raw-response panels, the alt-view header.
+- **Pressed Grey** (`surface-3`): the segmented-control track, loading placeholders.
+- **Hairline** (`border`) and **Firm Hairline** (`border-strong`): card and table rules; input, button, field and checkbox outlines.
+- **Ink / Secondary Ink / Muted Ink** (`text`, `text-2`, `text-3`): body text; descriptions and inactive controls; labels, meta, placeholders and icons.
+- **Band** (`band` with `on-band`): toasts only. It inverts in dark mode.
 
 ### Named Rules
-**The One Job Per Hue Rule.** Blue means "you can act here"; orange means "this is the product / you are here". Blue never decorates and orange never marks an action, a status or a heading.
+**The One Job Per Hue Rule.** Blue means "you can act here"; orange means "this is the product". Blue never decorates, and orange never marks an action, a status or a heading.
 
-**The Verdict Pair Rule.** Every status is a soft fill plus a strong text in the same hue, with an icon, so the meaning survives without color. Status hues never appear as decoration.
+**The Verdict Pair Rule.** Every status is a soft fill plus a strong text in the same hue, with an icon or a word, so the meaning survives without colour. Status hues never appear as decoration.
 
-**The Two Theme Rule.** Every surface, text and status token has a dark counterpart (the `-dark` keys). Dark applies under `prefers-color-scheme: dark` unless `data-theme="light"` is set, and always under `data-theme="dark"`. Signal Orange keeps its value in both themes.
+**The Two Theme Rule.** Every surface, text and status token has a dark counterpart (the `-dark` keys). Dark applies under `prefers-color-scheme: dark` unless `data-theme="light"` is set, and always under `data-theme="dark"`.
 
 ## Typography
 
-**Body Font:** Inter (with system-ui, -apple-system, Segoe UI, Roboto fallbacks), loaded at weights 400 to 700, with `cv11` and `ss01` enabled.
-**Label/Mono Font:** the system monospace stack (ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas) with tabular numerals.
+**Interface Font:** Noto Sans, loaded from Google Fonts at weights 400 to 700, with system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue and Arial as fallbacks.
+**Value Font:** the system monospace stack (ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, Liberation Mono) with tabular numerals.
 
-**Character:** Inter does the interface talking at small, firm sizes; monospace marks anything the operator might copy into a terminal. The split itself is information.
+**Character:** Noto Sans is plain, open and slightly wide, so labels stay legible at 12 to 13.5px. Its Latin, Greek and Cyrillic coverage keeps internationalised names consistent with the rest of the page. Monospace marks anything the operator might copy into a terminal; the split itself is information.
 
 ### Hierarchy
-- **Headline** (650, 26px, 1.2, -0.02em; 22px under 900px): the page or zone title, such as the looked-up domain.
-- **Title** (600, 16px, 1.3, -0.01em): card titles ("DNS records", "Mail"). Section titles use 600 at 15px; modal titles 600 at 17px.
-- **Body** (400, 14px, 1.5): default text and page descriptions, capped near 70ch.
-- **Body Table** (400, 13.5px): table cells, sidebar items, key/value lists. Secondary lines drop to 12.5 to 13px in `text-2`.
-- **Label** (600, 12px): table headers, sidebar group labels, badges. Sentence case, no uppercase tracking.
-- **Value Mono** (400, 13px, 1.55): record values, the record type column, curl strips, code blocks, timings and TTLs (12px).
+- **Home Logo** (650, 46px, -0.035em; 36px under 900px): the wordmark beside the 54px mark on the start page. The only large type in the product.
+- **Zone Name** (mono 500, 30px, -0.02em; 26px under 900px): the looked-up domain or IP at the top of the results.
+- **Headline** (650, 26px, -0.02em; 24px under 900px): page titles such as Settings and the API page.
+- **Title** (600, 15px, -0.01em): card and section titles ("Records", "Mail", "Resolvers"). Modal titles are 600 at 17px.
+- **Body** (400, 13.5px, 1.5): default text. Descriptions use 13 to 14px in `text-2`, capped near 70ch.
+- **Label** (600, 12px): table headers, fact-cell labels, the suggestion-list header, field labels. Sentence case, never uppercase.
+- **Value Mono** (400, 13px, 1.55): record values, the type column (600 at 12.5px), curl strips and code. TTLs and timings are 12px.
+- **Search** (14px in the top bar, 17px on the start page).
 
 ### Named Rules
-**The Copyable Is Mono Rule.** If a string could be pasted into a shell (a domain, record, IP, TTL, command), it is set in monospace. Prose and labels are never mono.
+**The Copyable Is Mono Rule.** If a string could be pasted into a shell (a domain, record, IP, TTL, command), it is set in monospace. Prose, labels and buttons are never mono.
 
 ## Layout
 
-The shell is a CSS grid: a sticky 56px top bar (`--topbar-h`), then a 240px sidebar (`--sidebar-w`) beside a fluid main column. The sidebar is sticky under the top bar and scrolls on its own. Main content is padded 28px 32px 64px and centered at a 1120px max width (920px for narrow pages such as Settings).
+There is no sidebar in the app. A sticky 56px top bar (`--topbar-h`) holds the mark and wordmark, a divider, the search field (up to 540px) and, at the right edge, the theme and settings icon buttons. Main content is padded `0 40px 88px` (`0 16px 72px` under 900px).
 
-Spacing follows a 4px base used mostly in steps of 4, 8, 12, 16, 20, 24 and 32px. Cards stack with a 20px gap and pad their heads at 18px 20px 16px and bodies at 0 20px 20px. Table cells are 11px 16px, with 20px at the outer edges so cell text aligns with the card head. The home view uses a two-column card grid with a 20px gap.
+### Views
+- **Start page:** the top bar turns transparent and borderless and hides its mark and search slot. The home logo sits 17vh from the top (12vh under 900px) with the large search field 32px below it, at most 640px wide. Nothing else is on the page.
+- **Results:** a centred column up to 1180px. The zone header (name, overall badge, a row of fact cells) is followed by the sticky section bar and one card per section: Records (or Reverse DNS for an IP), Mail, Registry and TLS, depending on what was looked up.
+- **Settings:** a centred column up to 900px: a page head, then cards of setting rows (Display, Checks, Record types, Resolvers, Data).
+- **API page (`/api-docs`):** the only page with an index column: a 220px sidebar beside the content, grouped by OpenAPI tag. It is reached by URL only; the app links to no documentation.
 
-Responsive behavior:
-- **Under 1100px:** the record table drops its Source column.
-- **Under 900px:** the sidebar becomes a fixed off-canvas drawer (min(280px, 85vw)) that slides in over a scrim, opened from a menu button; top-bar text links hide, the wordmark text hides beside the mark, the lookup field takes the remaining width, and card and table padding tightens to 16px.
-- **Under 640px:** record tables restack into a grid per row (type, status and Details on one line; content below), certificate tables become labelled lists, and the lookup button wraps under the field.
+### Spacing
+A 4px base, used mostly in steps of 4, 8, 12, 16 and 20px. Cards stack with a 20px gap. Card heads are at least 52px tall with 12px 16px padding; table cells are 9px 12px with 16px at the outer edges, so cell text lines up with the card title.
+
+### Responsive behaviour
+- **Under 1000px:** the section bar's tools wrap under the section links.
+- **Under 900px:** the wordmark text and the `Ctrl K` keycap hide, the top-bar search takes the remaining width, and setting rows stack their control under the text. On the API page the sidebar becomes an off-canvas drawer over a scrim.
+- **Under 640px:** fact cells collapse to one or two columns; the section links scroll sideways; button labels hide, leaving icons; the register restacks so each row shows type and value on top and one inline "Resolver ✓ TTL" tally per resolver below; mail checks and certificates become labelled lists.
 
 ## Elevation & Depth
 
-The system is flat. Cards, the top bar and the sidebar sit at the same level and are separated only by 1px borders and the canvas tone. A single popover shadow (`--shadow-pop`) exists, and it is used only for surfaces that genuinely float above the page: the autocomplete dropdown, modals, toasts, the back-to-top button and the mobile sidebar drawer.
+The system is flat. Cards, the top bar and the section bar sit at page level, separated by 1px borders and the canvas tone.
 
 ### Shadow Vocabulary
-- **Popover** (`box-shadow: 0 8px 24px rgba(20,20,30,0.12), 0 2px 6px rgba(20,20,30,0.06)`; dark: `0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3)`): floating layers only.
-- **Control knob** (`box-shadow: 0 1px 2px rgba(0,0,0,0.25)`, 0.12 on the segmented thumb): the toggle-switch knob and the selected segment, to read as a physical control.
+- **Popover** (`--shadow-pop`: `0 8px 24px rgba(20,20,30,0.12), 0 2px 6px rgba(20,20,30,0.06)`; dark `0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3)`): modals, toasts, the back-to-top button and the mobile drawer on the API page.
+- **Search lift** (`0 1px 6px rgba(20,20,30,0.14)` on hover and focus; `0 2px 10px` with a `0 10px 16px` list shadow while suggestions are open): the search field is the one in-flow element that lifts, because it is the one thing you are meant to touch.
+- **Sticky hint** (`0 1px 2px rgba(20,20,30,0.04)`): the section bar, so it reads as resting above the cards it scrolls over.
+- **Control knob** (`0 1px 2px`): the toggle knob and the selected segment.
 
 ### Named Rules
-**The Floats-Only Shadow Rule.** A shadow means "this is above the page and will go away". Anything that lives in the page flow, including cards, tables and the zone header, has a border and no shadow.
+**The Floats-or-Invites Shadow Rule.** A shadow means "this is above the page" or "this is the field to type in". Cards, tables and the zone header have a border and no shadow.
 
 ## Shapes
 
-Corners are gently rounded and consistent by scale: 8px for cards, modals, dropdowns and toasts; 6px for buttons, inputs, code blocks, sidebar items and the resolver answer boxes; 4px for badges, keycaps and inline code; fully round only for example chips, status dots, the toggle track and the back-to-top button. Every container edge is a 1px hairline. Icons are 16px line icons on a 1.75 stroke (2.25 inside badges). The brand mark is a 24-unit square with 6-unit corners in Signal Orange and a white magnifier.
+Corners are gently rounded: 6px (`--radius`) for cards, fact cells, buttons, inputs, code blocks and the section bar; 8px for modals; 4px (`--radius-sm`) for badges, counts, checkboxes and keycaps. The search field is the one fully rounded control: 19px radius in the top bar, 26px on the start page, and its suggestion rows repeat that pill shape inside the list. Toggle tracks, the clear and delete buttons, status dots and the back-to-top button are round.
+
+Icons are 16px line icons on a 1.6 stroke (2 to 2.4 inside badges, ticks and checkboxes). The brand mark is a 24-unit square with 6-unit corners in Signal Orange and a white magnifier.
 
 ## Components
 
+### Search Field (signature)
+- **Shape:** a white pill with a firm hairline, a search icon on the left and a clear button once there is text. 38px tall in the top bar (with a `Ctrl K` keycap when empty and unfocused); 52px, 17px text and a soft resting shadow on the start page.
+- **Suggestions:** focusing the field opens a list of recent lookups that hangs from it. The field squares off its bottom corners, and the field and list read as one card divided by an inset hairline. A "Recent" header carries a "Clear all" link-button. Each row is a 38px rounded pill with a clock icon, the lookup in text, its kind ("Domain", "IPv4", "IPv6") in muted 12px, and a round bin button that appears on hover or selection and turns red on hover. Arrow keys move a grey selection through the rows.
+- **Privacy:** recents are kept only in this browser and only while Settings › Data › "Remember recent lookups" is on.
+
+### Fact Cells
+A white 6px box split into labelled cells (min 190px, auto-fit) by hairlines: Kind, Resolvers with their slowest answer, Queried (UTC), and a wide "From a terminal" cell with the curl command and a copy button. A cell flagged warn or fail takes that status's soft fill.
+
+### Section Bar
+Sticky 8px below the top bar. On the left, links to each section with a mono count (or an amber/red count chip when something is flagged). On the right: the "Only disagreements" checkbox, a Form / Zone / JSON segmented control, an Export button and the primary "Run again" button. Keyboard shortcuts: `1` to `3` switch views and `D` toggles the filter; anywhere, `/` focuses the search and `?` lists the shortcuts.
+
+### Register (signature)
+The records table. Columns: Type (mono 600, 96px), Value (mono), one right-aligned column per resolver, and a copy column. Rows are grouped by type with a hairline between groups.
+- A resolver cell holds a green tick and the TTL with tabular numerals, `NODATA` in muted small caps-style text, or a red error code.
+- A row where resolvers disagree takes a 55% `warn-soft` wash; the cell for the resolver that is missing the value takes full `warn-soft`, a `warn-line` inset outline and a short amber dash.
+- Hovering a row fills it Inset Grey, dims every other value to `text-2` and reveals its copy button.
+- IPs are link-buttons that open an IP-info modal (details and a small map).
+- "Only disagreements" hides every type group whose resolvers agree and says so when none remain.
+
+### Checks and Certificates
+Mail and CAA checks are ruled tables: a mono check name, the record found (pre-wrapped with a copy button), a reference column and a right-aligned verdict, either a badge or a green "OK" word. Flagged rows carry a 55% wash of their status colour. TLS lists recent certificates with mono names and dates; expired ones fall to `text-3`. A "Raw response" disclosure opens the source JSON in an Inset Grey code panel.
+
+### Zone and JSON Views
+Alternatives to the Form view, in the same white box: an Inset Grey header with the request line in mono and meta, then the content as preformatted mono text (a zone file, or the API's own JSON for the same lookup).
+
 ### Buttons
-Compact and plain, like dashboard controls.
-- **Shape:** gently rounded (6px), 32px tall, 12px side padding, 500 weight at 13px; the large variant is 40px tall.
-- **Default:** white with a firm hairline border; hover fills with the hover grey.
-- **Primary:** Action Blue fill with white text ("Run again", "Look up", "Save"); hover deepens to `action-blue-hover`.
-- **Danger:** red text on white; hover adds a red soft fill and red border.
-- **Ghost / icon / link:** transparent icon buttons (32px square, `text-2`), and link-buttons in Action Blue with an underline on hover.
-- **Focus:** a 2px focus-color outline offset 2px on every interactive element. Transitions are 120ms on color only.
+- **Shape:** 6px radius, 32px tall, 12px side padding, 500 weight at 13px; the large variant is 40px.
+- **Default:** white with a firm hairline; hover fills `hover`.
+- **Primary:** Action Blue fill; hover deepens to `action-blue-hover`.
+- **Danger:** red text; hover adds `fail-soft` and a red border.
+- **Icon / link:** 30px transparent icon buttons in `text-2`; link-buttons in `link` with an underline on hover.
+- **Press:** buttons sink 1px while pressed. Focus is a 2px `focus` outline offset 2px on every interactive element.
 
-### Chips
-- **Style:** pill example chips (26px, mono 12.5px) in Inset Grey with a hairline; hover turns them blue-tinted with a blue border.
-- **Selectable tags:** 6px-radius mono tags in Settings; pressed state is blue border, blue soft fill and link-colored text.
-
-### Cards / Containers
-- **Corner Style:** 8px.
-- **Background:** Card White on the canvas; footers in Inset Grey with a top hairline.
-- **Shadow Strategy:** none (see Elevation).
-- **Border:** 1px `border`; the danger card mixes 35% `fail` into the border.
-- **Internal Padding:** 20px (16px under 900px). A card head carries a title, a one-line description and right-aligned meta ("7 checks · 1 flagged").
-
-### Inputs / Fields
-- **Style:** 36px, white, 1px firm hairline, 6px radius; mono variant for values. The top-bar lookup is 34px on Inset Grey with a search icon and a `Ctrl K` keycap.
-- **Focus:** border turns Action Blue with a 3px `action-blue-soft` halo; the top-bar field also turns white.
-- **Toggles and segmented controls:** 36x20 switch filling blue when on; segmented control on Pressed Grey with a white selected segment.
-
-### Navigation
-- **Top bar:** white, 56px, bottom hairline; mark and wordmark (650, 16px), a divider, the lookup field, then text links (CLI, API) and icon buttons (theme, settings).
-- **Sidebar:** white with a right hairline. Items are 34px rows at 500/13.5px in `text-2` with a 17px muted icon; hover fills grey. The active item gets Pressed Grey, 600 weight, full-ink icon, and the 3px Signal Orange bar at its left edge. Groups are separated by hairlines and headed by 12px labels; per-section counts show a green check or a warn badge with the flag count.
-- **Mobile:** the sidebar becomes a drawer with the popover shadow over a 35% dark scrim.
+### Settings Controls
+Setting rows put a 600 13.5px title and a 12.5px description on the left and the control on the right. Toggles are 34x18 tracks that fill blue when on. Segmented controls sit on Pressed Grey with a white selected segment. Record types are 28px mono tags that turn blue-bordered, blue-tinted and blue-text when pressed. Resolvers are rows with name, URL and actions, editable in place.
 
 ### Status Badges
-22px tall, 4px radius, 600 weight at 12px, with a 13px icon: check for ok, triangle for warn, circle-x for fail, info for note. An unflagged row uses a plain green dot and a word ("Agree", "Found") rather than a badge, so badges only appear where something needs attention.
+22px tall, 4px radius, 600 weight at 12px, with a 13px icon: check for ok, triangle for warn, circle-x for fail, info for note. Badges in the register's type column and certificate rows shrink to 18px at 11px. The zone's overall badge grows to 26px.
 
-### Record Table
-The core report surface. Columns: Type (mono, 600), Content, Status, Source, Details. Rows flagged warn or fail carry a faint tint of their status soft color across the row. Content cells list values in mono, each with a copy button that appears on hover. Multi-value cells show at most 5 values, followed by a "Show N more" link-button; each value is clamped to 2 lines with the full text in its title. A Details toggle (blue, chevron rotates 180°) opens the comparison in place below the row.
+### Floating Elements
+- **Toasts:** bottom-centre, on the inverted Band surface, 13px, rising in over 220ms. Error toasts use `fail`.
+- **Modals:** 560px (420px narrow), 8px radius, popover shadow, over a 45% black overlay; header, body and an optional footer separated by hairlines.
+- **Back to top:** a 36px round button at the bottom right that fades in after scrolling.
 
-### Resolver Comparison (signature)
-Opened in place under a record row on an Inset Grey band. One bordered box per resolver (6px radius, min 260px, auto-fit grid, 12px gap), headed by the resolver name, its timing in mono (amber when slow) and a copy button. Each box lists answers with TTLs. Hovering or focusing a value lights the same normalized value in every resolver with `action-blue-soft`; a value missing from other resolvers gets a 70% `warn-soft` fill and a small amber "not from X" note. A resolver error replaces the table with a fail badge and the message.
+## Motion
+
+Motion explains what changed and never decorates. Easing is `--ease-out` (`cubic-bezier(0.16, 1, 0.3, 1)`).
+
+- **View changes** use the View Transitions API. The search field is the one named element (`view-transition-name: search`), so it glides between the centre of the start page and the top bar over 420ms while the rest of the page cross-fades over 220ms. Theme changes cross-fade over 320ms.
+- **Results** rise 8px and fade in over 380ms, top to bottom: header, then section bar (+50ms), then each section (+100, 150, 200, 250ms).
+- **Suggestions** drop 4px into place over 160ms; a deleted row folds away.
+- **Small confirmations:** the copy icon pops from 60% scale over 220ms; modals fade in and rise over 240ms; buttons sink 1px on press.
+
+### Named Rules
+**The Off Switch Rule.** Settings › Display › Animations turns every transition and animation off. Under `prefers-reduced-motion: reduce`, movement is dropped but the fades that explain a change stay, the search no longer glides and nothing staggers.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep every page inside the shell: 56px top bar, 240px sidebar, cards in a centered column no wider than 1120px.
-- **Do** separate surfaces with 1px hairlines and the canvas tone; reserve the popover shadow for dropdowns, modals, toasts and the mobile drawer.
-- **Do** use Action Blue (#0051c3) only for actions, links and focus, and Signal Orange (#f38020) only for the mark and the active-nav bar.
-- **Do** express every verdict as one of the four badges (ok, warn, fail, note), soft fill plus strong text plus icon.
-- **Do** set every copyable value in the system monospace and give it a copy affordance.
-- **Do** cap multi-value cells at 5 values with "Show N more" and clamp each value to 2 lines.
-- **Do** define both light and dark values for any new token and honor `data-theme`.
+- **Do** keep the start page to the logo and the search field.
+- **Do** show results as rows in ruled tables, with a column per resolver wherever answers are compared.
+- **Do** separate surfaces with 1px hairlines and the canvas tone; keep shadows for floating layers and the search field.
+- **Do** use Action Blue (#0051c3) only for actions, links and focus, and Signal Orange (#f38020) only for the mark.
+- **Do** express every verdict as one of the four badges, or a soft wash plus a strong word.
+- **Do** set every copyable value in the system monospace and give it a copy button.
+- **Do** define a dark value for any new token and honour `data-theme`.
+- **Do** give any new motion a reduced-motion version and respect the Animations setting.
 
 ### Don't:
-- **Don't** use the Cloudflare logo, cloud or wordmark as branding (the name appears only as data, e.g. a resolver); the product's mark is its own orange magnifier square.
+- **Don't** put navigation, documentation links, a footer or marketing copy on the start page or in the top bar.
+- **Don't** use the Cloudflare logo, cloud or wordmark as branding; Cloudflare appears only as data (a resolver name).
+- **Don't** use orange for buttons, links, headings or warnings; warnings are amber (`warn`).
 - **Don't** add decorative shadows, gradients or glows to cards, tables or headers.
-- **Don't** use orange for buttons, links, headings or warnings; warnings are amber (`warn`), not brand orange.
-- **Don't** introduce a hero wordmark landing or a stack of large rounded status cards; results are rows in ruled tables.
-- **Don't** set prose or labels in monospace, or values in Inter.
+- **Don't** return to a sidebar shell in the app, or to a neon or terminal "hacker" palette.
+- **Don't** set prose or labels in monospace, or values in Noto Sans.
