@@ -1196,9 +1196,6 @@ body.on-home .topbar-sep {
 }
 
 @media (max-width: 640px) {
-  .topbar-links {
-    display: none;
-  }
   .cells {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
